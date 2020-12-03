@@ -1,255 +1,536 @@
 # GraphQL-React
 
-## More on Client Side Mutations
+## Building From (Mostly) Scratch - Full stack
 
-### The Like Mutation
+### App Overview
 
-*  we can intercept a user clicking on the thumbs up symbol we can start thinking a little bit more about the mutation that we're going to call to like an individual lyric.
+* In this course we've gone through one application where we focused on the back end one application where we focused on the front end and now we're going to focus on an app where we are concerned with the entire full stack.So everything from the back end database all the way to the front end.
 
-* first writing the mutation out inside of graphical then we'll move the mutation over to our lyric list component and call it from the online function.
+* next application that we're going to be working on we're going to be working on an application using authentication with graphQL.
 
-* Looks like there is a very app named mutation in here like lyric. It expects us to call it with an ID and then it returns the like updated lyric.
+* So we've already had a lot of content where we've kind of figured out how to associate data sitting in our database with our graphQL queries
 
-* Remember that each lyric we have has a property called likes. So this is the number of likes that each lyric has.
+* We need to have a reasonable idea of how to authenticate our users and especially in the context of graphQL we need to understand how we tie our authentication system with graphQL quries.
 
-* So presumably after we like lyric we can ask the lyric for the number of new likes that it has and get the response back and somehow update our application with it.
+* because a extremely common case and we'll talk about this in great detail is figuring out exactly how to best restrict the amount of data that a user can feed that a user can see inside of our application.
 
-* The first thing we need to do is make sure that we have the ID of a lyric inside of our application.
+* especially in the context of graphQL we need to understand how we tie our authentication system with our graphQL because a extremely common case how to best restrict the amount of data that a user can feed that a user can see inside of our application.
 
-* So I need to get a list of all the lyrics that I have. I'm going to check my docs again for that really quickly. Let's go back to the root documentation explore all find my root query type and it looks like I can either ask for a lyric by ID. I think that since we're trying to get at the ID of a lyric here we will get our big list of songs and then print out the ID of each lyric inside those songs.
+### App Challenges
 
-```js
-mutation LikeLyric($id: ID) {
-  likeLyric(id: $id) {
-    id
-    likes
-  }
-}
+* Let's now talk about some of the big challenges of this application. (Refer : full1)
+
+* Last thing I want to talk about just a little bit is a little bit of the full stack approach that we're taking here in all the different technologies that we're going to be making use of.(Refer : full2)
+
+* No big changes here per say. We're still going to have a mongo DB database that is hosted by Mago lab. Again recall that we're making use of Mago lab just so that we do not have to set up a local Mongo DB database. And that also makes life a little bit easier when we migrate over to production.
+
+* So we don't have to worry about big differences in our database solution between production and our local environment
+
+* the server the web server that we're going to be making use of it's still going to be an express 
+
+* express is going to be hosting a graphQL instance and we're also still going to making use of Web pack for developing all of our client side assets
+
+* webpack and graphQL are going to be the main points of interface with our user inside the web browser where we're going to have our react js application.
+
+###  Boilerplate Setup
+
 ```
-* So when we first run this lyric or so I mean when we first run this mutation rate here I'm going to accept expect to see a response come back where we only have one like assigned to it. So I'm going to run this thing and ok.
+git clone https://github.com/StephenGrider/auth-graphql-starter
 
-* I've got one like if I run a mutation again I got two three four and so on. So every single time we run the mutation we're just incrementing the number of like associated with the individual lyric.
+npm install
+```
+* Now the general architecture of this project here is very similar to the ones the projects that we'veworked with previously.
 
-* I think that we're ready to move this thing over to our component so I'm going to select the entire mutation 
+* So we have an index.js file at the very top level that starts up our app.We have a server folder with a bunch of our server related code and then a client folder that is supposed to be that is intended to contain some of the client side javascript code for our application.
 
-* I definitely want to place the mutation inside of the lyric list component because I want to call the mutation from inside of the component 
+* I want to start off by looking at the code that is included inside of the client folder. So if I open up index.js
 
-### Showing Likes with Lyrics
+* OK just route dead simple absolute minimum boilerplate for getting a re-act application on the screen we create the root component and then we render on the screen. That's pretty much it.
 
-* We now need to make sure that we sandwich the mutation together with our component and we also need to import the gql and graphQL the helpers at the top.
+* Now let's check out the source server folder. So there's definitely a couple of different folders inside of here.
 
-* So let's first do our import statements and then come back to the bottom of the file
+* There we create the root component and then we render on the screen. That's pretty much it. check server.js and auth.js
+
+### Authentication Approach
+
+* In the last section we installed our boilerplate package and took a look at some of the different files inside of it.
+
+* In particular we looked at the auth.js file and I had mentioned that there was some compatibility coding here that makes graphQL and passport work nicely and you'll certainly read a little bit about that.
+
+* So I want talk a little bit more about passport and how it works with the graphical side of our application.
+
+* Let's take a look at a diagram to help us understand this a little bit better.(Refer : full3)
+
+* to authenticate a user. We get some incoming request from, we might call a mystery user. We don't really know who is making the authentication request.(Refer : full3)
+
+* (Refer : full3) - The request will come in with some username and password and it's up to passport to figure out which user that is and authenticate them successfully.
+
+* So passport will take that username. It will look through its database it will find a user with that username and then it will compare the stored password with a password that was provided on the incoming request and decide whether or not the authentication request is valid or not if the request is valid than passport will say. Ah fantastic. This is user number so-and-so
+
+* and it will save a little token or a little note on the user's cookie so that any time the user makes a request in the future we will immediately know that that is user number 5 or user number 6 or 7 or 8 or whoever it might be.
+
+* So this is how authentication works and really the vast majority of applications in the world today.
+
+* So let's talk a little bit about how this authentication scheme is going to change once we start involving graphQL.
+
+* So when would you start involving graphQL with passport. There's really two different approaches that we can take which I like to refer to as a de-couple approach and a coupled approach. So these are two different methods of involving graphQL and passport together
+
+* we'll first talk about the de-coupled approach right now and we'll talk a little bit about a couple.And then some of the pros and cons between the two 
+
+* de-coupled approach - because we first take care of passport or all the authentication without any concern of graphQL whatsoever. GraphQL not involved in the slightest bit.(Refer : full4)
+
+* A user is still going to make some authentication request where they provide their username and password. Passport is going to attempt to authenticate them and then identify the user in some fashion and set the users cookie.
+
+* Then whenever that user makes any type of follow up request the request will be identified automatically by passport and then the request will enter into the graphQL phase.
+
+* GraphQL will say oh this is user so and so they've already been identified by passport. I'm going to give them all the data that they would deserve as you desired. No.5 , So then graft who will formulate the response and send it back to the client.
+
+* Now the one thing I want to point out about this solution right now is that I've talked about identifying the user.And if we really think about identifying the user it's kind of like a change in the authentication state of our application. And whenever I say the word change we should be thinking mutation right. That's what we've been saying about graphQL all along. Anytime we change anything about our application it's always a mutation.
+
+* So if we use this de-coupled approach and graphQL is not involved at all we're not making use of any type of mutation to our code or any type of mutation of our application state.
+
+* So let's look at what would happen if we do involve graphQL using this couple of approach  (Refer full5) by the way coupled approach and de-coupled approach this is not official terminology.By the way is this terminology that I introduced to help you understand what's going on here.
+
+* OK so let's talk about what's different with this coupled approach.So at the coupled approach we'll make use of a mutation to authenticate the user in some fashion.
+
+* So we'll have this incoming authentication request which will really be a mutation.(Refer full5) 
+
+* graphQL will see that the user is making a mutation or request to attempt to identify themselves and it will pass along the request to passport and say oh. Looks like they're attempting to identify or to identify or authenticate themselves in some fashion.
+
+* I'm going to let passport take care of this passport will then identify the user in some fashion. It will still place a little cookie or a little identifier on the user's cookie and then will hand the request back to graphQL and then grafphQL will respond with whatever appropriate data.(Refer full5) 
+
+* whenever the user makes that followup request. when request comes into the graphQL side of things already with an identified user or graftQL can fetch any relevant data for that user and respond in turn.
+
+* So when the couple approached the big key is that we're going to allow graphQL to receive the authenticating request and then pass along or defer handling that request to passport.
+
+* So no matter what passports always going to be involved in some fashion it's really a question of whether or not we're going to allow graphQL to handle the request.
+
+* So let's talk a little bit about the pros and cons of each of these approaches.
+
+* But I personally don't think that there is a one size fits all solution. And instead I want to inform you about some of the different alternatives so you can come to a conclusion by yourself and decide which approach is best for you.
+
+* Well to be honest with you I would not want to use the coupled approach because graphQL and passport are absolutely positively not set up to work well with each other in any way shape or fashion.
+
+* Now if there was some alternative as passport out there if there was some other authentication framework where we could just very easily say log is user end or log this user out then that would make this a much easier decision. But unfortunately passport is really the de facto standard of authentication in the nodeJs world.And so we're kind of stuck with it for now.
+
+* for this course. We're going to go with the coupled approach right here. So we're going to go with this approach where we allow graphQL to handle all things related to authentication. All incoming requests and it's going to delegate the actual authentication part off to passport. And I think that's going to work out nicely with the code that we end up writing on the graphQL side but again trust me there was some headache around putting together this compatibility layer between graphical and passport in the first place.
+
+### MLab Setup
+
+* We have spent a lot of time talking about different approaches of handling authentication with graphQL.
+
+* at the end of the day we agreed that going with a couple approach would probably make more sense for the app that we're going to work on right now
+
+* because I think it's just slightly more technically challenging and I would like to show you an example of some of the really complex sides of graphQL
+
+* So in this section we're going talk a little bit about the different types and mutations that I think that we'll need for application and then we'll start working on the first mutation or type or whatever we decide we need to make.
+
+* There is one less piece of set up I want to take care of.we have to get a mongo lab instance to throw in here.I want to do that sign up piece really quick or make that new database piece really quick and then we can move onto the authentication stuff and we won't have to worry about any set up code and anything like that in the future.
+
+* Create a database in mlab and then create user the use the URL in server.js and
+```js
+const MONGO_URI = 'mongodb://<dbuser>:<dbpassword>@ds1fs5t353.mlab.com:62334/auth';
+```
+* We've got our you are for our Mongo lab instance.
+
+### The User Type
+
+* With any type of graphQL application you ever work on it always pays to do a little bit of homework or design planning ahead of time to plan out all the different types and all the different mutations you expect to have in your application.So spend a little bit of time to plan out the different types and the different mutations we're going to have for our authentication app.
+
+* I think that we should have a single type called the user type and then we have three different mutations called Sign up log in and log out on mutation side.
+
+* I want to be able to create a new user through sign up, because we're not only creating new user but we're also authenticating our users at the same time we're considering them to be logged in
+
+* with a logging mutation. We are exchanging an e-mail or a username and password for the user's authentication.
+
+* And then with log out we're going to destroy the authentication state that is held between the client and the server.
+
+* The important thing to remember here is that all three of these are mutations because we are altering some of the data or some of the state that exist between our client and the server.
+
+* User type is Totally appropriate will make that user type and then add it to our root query and maybe the user can look at a list of different users or a very particular user or maybe even get a reference to just the current user as well.
+
+* So those would all be possible queries that we would add to the query type.
+
+* I want to first start by creating the user type and then once we've created that type we can start worrying about the different mutations that we're going to have 
+
+*  after we put all the types of mutations together we can start testing them inside of graphical 
+
+* and then once we are confident with how they work in graphical we'll move on over to the client side of our application and start working on the react side of things as well.
+
+* So let's get started first with our user type 
+
+* So in the past we created just one file that we called the schema file for all the different types of mutations inside of our application. This time I want to take a little bit more modular approach where we split out all the different types of mutations into separate files.
+
+* Inside the schema folder - types - user_types.js
 
 ```js
-import React, { Component } from 'react';
-import { graphql } from 'react-apollo';
-import gql from 'graphql-tag';
+const graphql = require('graphql');
+const {
+    GraphQLObjectType,
+    GraphQLString
+} = graphql;
 
-class LyricList extends Component {
-
-  onLike(id, likes) {
-    this.props.mutate({
-      variables: { id }
-    });
-  }
-
-  renderLyrics() {
-    return this.props.lyrics.map(({ id, content, likes }) => {
-      return (
-        <li key={id} className="collection-item">
-          {content}
-          <div className="vote-box">
-            <i
-              className="material-icons"
-              onClick={() => this.onLike(id, likes)}
-            >
-              thumb_up
-            </i>
-            {likes}
-          </div>
-        </li>
-      );
-    });
-  }
-
-  render() {
-    return (
-      <ul className="collection">
-        {this.renderLyrics()}
-      </ul>
-    );
-  }
-}
-
-const mutation = gql`
-  mutation LikeLyric($id: ID) {
-    likeLyric(id: $id) {
-      id
-      likes
+const UserType = new GraphQLObjectType({
+    name: 'UserType',
+    fields: {
+        email: { type: GraphQLString }
     }
-  }
-`;
+});
 
-export default graphql(mutation)(LyricList);
+module.exports = UserType;
 ```
 
-### Fetching Likes
+* Remember that whenever we work with a type it usually corresponds to a model of sorts in our database or a collection of data that sits in our database.
+ 
+ * The board the plate that we're making use of right now already has a user model defined inside the models/user.js So let's open that up and look at what the default model is 
 
-* The first thing that I want to point out to you that can kind of guide us toward the answer or the fix or solution for this problem is that it appears that none of the light numbers appear on the screen. When we first refresh the page.
+ * in our database. We are currently storing just the email and password that is associated with each user. Now in no way shape or form does it really make sense to add the password to the fields object of our user type.
 
-* So I suspect that this is not something having to do with the mutation we put together instead. I suspect that it might be something around the Query that initially fetches the data for this page right here.
+ * I am never ever going to think of a single situation where I want to for any reason expose the password field of any of my users.
 
-* So the query that fetches an individual song and all the lyrics that are associated with that song.If you recall we had put that query inside of the fetchSongQuery file.
+ * Even though the password as it's saved in the database is going to be hashed insulted. So the password is not in plain text in the database. Nonetheless I cannot think of a single reason to ever expose that to the outside world And my graphQL schema.
 
-```js
-import gql from 'graphql-tag';
+ * So I think that as far as my user type goes the only field I really care about is the e-mail field. Like maybe it's totally reasonable to share a user's e-mail with other users inside the application.So I will expose the email field to everyone else.
 
-export default gql`
-  query SongQuery($id: ID!) {
-    song(id: $id) {
-      id
-      title
-      lyrics {
-        id
-        content
-        likes
-      }
-    }
-  }
-`;
+ * So I'm going to take my user type and we'll define the name property and the fields property on it.
 
-```
-* here we will fetch likes also as part of the song.when I click on a button the number of likes automatically increments for each one. Definitely the behavior that I was hoping for
+ ### The Signup Mutation
 
-* I really like how this application is turning out but there's one last thing in here that's really annoying. You'll notice that whenever we click on the button there is kind of that little imperceptible pause like just a quarter of a second or half a second. We're where we are waiting for the vote to be registered by the back end and then update the UI when we get the response back. That's not the best experience in the world.
+ * Now that we've got our user type put together we can start thinking about the different mutations that we're going to be working with.
 
-* And I would personally really like it if there was some way that we could say well I want to vote this post right here Or this lyric and I want that number to instantly just instantly be incremented.
+ * When we started thinking about signing up logging in logging out all these different things. My head Personally I immediately start thinking about checking the user's password and reading users from the database and making sure that that a user's e-mail is not in use and the password exists and blah blah blah all these different steps that are all associated with signing a user in and just authentication in general.
 
-### Optimistic UI Updates
+ * So the question very quickly becomes where do we put all that logic and where do we put all the logic for comparing a user's password or making sure they that a valid e-mail was provided.
 
-* In the last section we finished up the functionality for allowing a user to like an individual lyric.
+ * Do we stuff that all into the resolve function for each mutation. The answer is unequivocally no. No it's not.
 
-* However we notice that whenever you click on the Like button there's like a quarter or a half of a second delay which is which is just a little bit irritating to see.
+ * For every mutation that we write we want to ensure that as little logic as possible is located in the mutation itself.
 
-* You'll also note that this is a delay that is kind of minimized when we're running it on our local machine.
+ * So for every one of these mutations we're going to work with Sign-Up log in log out. We are going to have one with three lines of logic at most inside of every resolved function
 
-* And I suspect that if we deploy this to an actual production style app you might see even more latency or even more lag as we wait for that number to get updated.
+ * rather than placing all the logic first say creating a new user inside the mutation. We were always going to delegate to an outside helper function or a Helper Object or a helper service of some sorts.
 
-* So I want to propose that maybe if we figure out a solution for making it appear that the update is instant as far as our user is concerned.
+ * Remember that the idea behind graphQL is that it's kind of an abstraction layer of sorts between our front end and our true backend which might consist of many different services running in our background.
 
-* Luckily Apollo has fantastic support for this directly out of the box through a system that it calls "optimistic updates" or "optimistic responses".
+ * In theory any one of those services might change in some very fundamental way at any time.And so it really make sure that we don't couple are backend service too closely with our graphQL code. which is really just there to be kind of a presentation layer of all the different data in our application.
 
-* So let's take a look at the diagram and try to understand a little bit about how it works (Refer : graphql40) So we are going down in time here. So in the vertical direction or vertical axis we are starting at the very beginning at the top and then time is passing as we go down.
+ * So rather than stuffing all authentication logic inside the mutations itself we're going to make use of outside helper functions and outside objects.
 
-* So here's the order of operations whenever we want to use an optimistic response.
+ * Now again we spoke about this in the last few sections for the project that we're working on making passport and graphQL work nicely is a little bit of a pain in the rear.So I've taken the liberty of writing out a couple of these helper functions for us but we certainly will go back to the code and take a look at it and say hey look at all the stuff that we did not place inside the mutation.
 
-* We're going to call mutation and when we call mutation we're going to pass along a little object that's going to say hey when you call this mutation I bet you anything that we're going to get a response that looks  something like this. we're going to guess at what the response is when it comes back.
+ * So with that in mind let's get started with our different mutations.I'm going to make a single file to house all the different mutations of my project.
 
-* Apollo is going to take that guess of what we think the response is going to be and it's going to apply it to the data inside of its internal store.
+ * Now again I could certainly make a folder of sorts and place a bunch of different mutations in that folder and then reference it from somewhere else for this time. I'm going to make a single file because as you're going to see our mutations are going to end up being very small and very compact.
 
-* It's going to instantly render our re-act application with this new guess at what our data should be.
+ * So inside of my schema directory I'm going to make a new file called mutations.js then inside of here will place some of our boilerplate code for working with mutations.
 
-* So as far as our user is concerned the UI is going to instantly appear to update.
+ ```js
+ const graphQL = require('graphql');
+const {
+    GraphQLObjectType,
+    GraphQLString
+} = graphQL;
+const UserType = require('./types/user_type');
 
-* Now simultaneously the mutation is going to be issued to our back and as a network request.And so that request has been pending for that quarter or half of a second that we are already waiting.
-
-* When the mutation resolves and the response comes back Appollo we'll take that response and then update its local copy of data to match whatever the response actually is said.
-
-* And then it will update our UI with whatever the real data is from the backend server.
-
-* So again the idea here is that we are going to guess at the response that we expect to see if a mutation the UI will instantly update.
-
-* And then when we actually get the response from the server UI going to update again with whatever data actually came back.
-
-* Now of course we usually are going to really hope that the guess of our response is the same as the actual response because otherwise the user is going to see kind of this like rapidly changing little flip of data 
-
-* Now am going to lyrics list component and I'm going to find a mutation that we define inside of there.So here's the mutation where we'd like an individual lyric 
-
-```
-onLike(id, likes) {
-  this.props.mutate({
-    variables: { id }
-  });
-}
-```
-* now telling Appollo to use an optimistic response is actually kind of straightforward in some regards.The real challenge is deciding what the response should be.
-
-* So let's start off by first looking at the typical response that we get whenever this mutation is executed.
-
-* If you check response You'll notice that we get back like lyric. We have the type name of the lyric and then we have the ID and the number of likes that are associated with it.
-
-* So we're going to have to do a little bit of footwork on guessing what the current number of likes should be. After we run the mutation. OK. So that's our plan.
-
-### Handling Optimistic Responses
-
-* Next we're going to say hey here's the optimistic response when this mutation runs I want you to try to just early use this data as soon as possible.
-
-* So I say here's the optimistic response like
-
-```js
- onLike(id, likes) {
-    this.props.mutate({
-      variables: { id }, 
-      optimisticResponse: {
-        __typename: 'Mutation',
-        likeLyric: {
-          id, /* ie id : id , We'll provide the ID of the record that was changed. And remember we already received the ID as an argument*/
-          __typename: 'LyricType',
-          likes: likes + 1 /* we also received like in argument*/
+const mutation = new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+        signup: {
+            type: UserType,
+            args: {
+                email: { type: GraphQLString },
+                password: { type: GraphQLString }
+            },
+            resolve(parentValue, { email, password }, req) { 
+              
+              /* The third argument in here that we really care about is something called request, request right here represents the request object coming from Express. */
+            }
         }
-      }
-    });
-  }
-```
+    }
+});
 
-* So we have to specifically say that we are making a mutation like so now the next part is the part that's much more straightforward. We're going to provide the response that we are going to expect to see from our back and server. And when I say that I'm talking about exactly what we see in our response log
+module.exports = mutation;
+ ```
+### Delegating to the Auth Service
 
-* We are guessing that the request is going to go through successfully and we are hoping that when the response comes back there's going to be an increment value for the number of likes right there.So that's pretty much it for optimistic response.
+* In the last section we started doing a little bit of work on our sign up mutation. We defined the result function and we also spoke a little bit about the third argument that we've never spoken about what the result function which is the incoming requests from our express server.
 
-* So now as we test this the expectation is that the instant I click on the thumbs up button I should see the number increment but then the request should only resolve some tiny amount of time later. Remember we're not delaying the request at all. The request is still being issued instantly. The only change is at this time around. We are guessing at what the update should be for the UI.
+* The authentication service that's already been included with the starter project relies heavily upon this request object right here.
 
-* so now your immediate question might be. Well what happens if I guess incorrectly  what happens if I thought that the like was going to go through.But it turns out that the server rejects it or it turns out that the number of likes is actually much greater than we expected.
+* So it's definitely important that we maintain that request object and we pass it to the auth service and we try to sign up for an account.
 
-* that's a great question and we can very easily see what happens.
+*  let's go and look at the auto service really quick and figure out exactly how we sign up for a new account given some email and password.
 
-*  let's just say you know what maybe we made a big mistake and maybe we think that on the client side we believe that it's going to be changed by 12 but the server still is only going to be incrementing by 1.
+* In auth.js file if we call the sign up function with an email a password and a request object. This being the request object from the Express side of our application it will automatically attempt to sign up a new user for our application and then save them and log them into our application.
 
-* Now lets refersh and try wih optimistic response value as 12 , Now that's some interesting behavior. The instant I click on the button the number adjusts by 12. That's the optimistic update. But as soon as the response comes in from the back end we get the real truth which is that it was only incremented by one.
+* So if we import this function right here into our mutations file and we call the sign up function with the e-mail password in requesting that result function then presumably that will create our new user and automatically log the user in.
 
-* So you can see that optimistic updates are a pretty safe strategy for really increasing the speed of your UI.The only kind of risk here is that if you start doing things incorrectly your user is going to see that kind of jump of data which is very much unexpected for them.
+* Let us try, I know that it's a little bit painful to make use of this function without having built it ourselves. Again there's some kind of nasty stuff in here around making passport work nicely with graphQL
 
-* But in general at the end of the day it's not going to break anything 
-You're not going to go totally out of whack here. The UI will automatically eventually resolve to the correct answer.
+* really what's happening is graphQL expects to receive a promise for dealing with any asynchronous code but passport has no built in support for promises.
 
-* So it's a reminder when we add a new lyric we run a mutation that grabs the whole song and all the associated lyrics. Let's try adding another lyric right now and see what happens.
+* And so that's kind of where there's a mismatch in the expected API here.
+And that's why you see this kind of nasty looking promise statement inside of the sign up function. (Refer auth.js sign up function)
 
-* Let's say type a lyric and then I'll hit enter and you'll notice I see a big error message here. And I've got loading at the top of the screen and it appears that it's not actually resolving the request at all. So this is a little bit of a bug in the Apollo world.
-
-* Again remember Apollo is still a developing technology. Let's check out the mutation that we run whenever we add a new lyric, 
-
-* we are using the lyric create form. at the very bottom we can scroll down to find our mutation to add a new lyric to an individual song.
-
-* So right now when we run that mutation we get back to song. Here we are asking for the ID we're asking for are all the lyrics around it. But we are only asking for the ID and the content. So that is what is causing an issue right now.
-
-* That's what throwing the error part of the application is expecting that we're going to know the number of likes associated with each lyric but we are not actually asking for that data right now.
-
-* So to get our error message to go away we have to include a request for the number of likes associated with each lyric.
+* Let us import and use this sign up function in our graphql mutation
 
 ```js
-const mutation = gql`
-  mutation AddLyricToSong($content: String, $songId: ID) {
-    addLyricToSong(content: $content, songId: $songId) {
-      id
-      lyrics {
-        id
-        content
-        likes
+ const graphQL = require('graphql');
+const {
+    GraphQLObjectType,
+    GraphQLString
+} = graphQL;
+const UserType = require('./types/user_type');
+const AuthService = require('../services/auth');
+
+const mutation = new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+        signup: {
+            type: UserType,
+            args: {
+                email: { type: GraphQLString },
+                password: { type: GraphQLString }
+            },
+            resolve(parentValue, { email, password }, req) { 
+                 return AuthService.signup({ email, password, req });
+            }
+        }
+    }
+});
+
+module.exports = mutation;
+ ```
+ * Now remember signing up a new user is going to have to interact with the database in some fashion.
+
+ * Not only do we have to make sure that the email is not in use. So we're going to have to look over our entire list of emails and our user collection but we're also going to have to save a new user to the database as well.
+
+ * So this is a lot of asynchronous calls which means that the AuthService.signup function right here returns a promise 
+
+ * whenever we return a promise from our resolve function So that graphQL knows to look at the promise that gets returned right here and say okay I'm going to hold up for a second and wait for this operation to resolve before I attempt to return any values to my front end.
+
+ * So our Sign-Up resolve function right now is incredibly small. It's exactly one line of code and rather than putting all the logic in the resolve function for actually signing up a user We're placing all that kind of business logic is what I really want to call it inside of a helper function or a helper object.
+
+ * So this right here is a very nice looking mutation. It just says hey I don't really know what's going on here. I'm just going to completely delegate handling all this Sign-Up business to this outside piece of code.
+
+ ### Testing Signup
+
+ * we finished up the sign up mutation and we're just about ready to test it inside of graphical.
+
+ * There is a little bit of last minute set up that we have to do inside of our project ahead of time though we do have to make sure that we wire up these newly created mutations to our schema inside of the schema.js file.So inside of schema Geass we will import or require in our mutation file.
+
+ ```js
+ const graphql = require('graphql');
+const { GraphQLSchema } = graphql;
+
+const RootQueryType = require('./types/root_query_type');
+const mutation = require('./mutations'); //here
+
+module.exports = new GraphQLSchema({
+  query: RootQueryType,
+  mutation //here
+});
+
+ ```
+ * Now in types/root_query type we need atleast one field. let us add some dummy field for now.
+
+ ```js
+const graphql = require('graphql');
+const { GraphQLObjectType, GraphQLID } = graphql;
+
+const RootQueryType = new GraphQLObjectType({
+  name: 'RootQueryType',
+  fields: {
+    dummyField : GraphQLID
+  }
+});
+
+module.exports = RootQueryType;
+ ```
+ * Now we'll start up the project with the very classic command and then npm run dev.
+
+ * Now let's write signup query in graphql
+
+ ```js
+ //request
+ mutation { 
+     singup(email:"reachtoguna@gmail.com", password:"password"){
+         email
+     }
+ }
+ ```
+ * We will get response data with saved email.
+
+ * So presumably we can kind of assume at this point that a user has been added to our users collection in our lab database and more importantly that we are currently authenticated or signed into our application number that's what the real goal here is of the Sign-Up mutation. It's not only to create a new user it is also to simultaneously authenticate ourselves with the application as well
+
+* Lets move to mlab and check this entry
+
+* I should see automatically a new collection appear on the list here. So here's the users collection that was just created automatically. You'll notice that there's also a sessions collection in here as well. That's part of the session record keeping part of express that is already wired up inside of our project.
+
+* So let's look at the users collection looks like our user was successfully created.
+
+* You'll also notice that our password is in here as well and it is absolutely not a plain text password.So it is salted and hashed which means that if anyone just happens to get access to all of our user records including all of our user passwords they'll have a heck of a time trying to figure out the user's actual password from this encrypted string right here.
+
+* So it looks like our sign up at least the user creation side is working correctly. Again my expectation right now is that in addition to creating this new user I should have also gotten a cookie place on my session or I should say and identify or place on my session that says hey whoever's making requests from this browser right here and we consider them to be authenticated.
+
+* So we don't really have any good way of proving that on our server just yet. We don't really have any good way of testing authentication. We certainly will in a moment but right now we're just going to have to kind of take it on blind faith that we are being successfully authenticate with our server.
+
+### The Logout Mutation
+
+* so logging out user is going to be another type of mutation that we put together.
+
+* passport that's going to handle really signing out a user all the mutation that we're writing here is going to do is make sure to instruct passport to sign out the user
+
+* check passport js logout method Refer : http://www.passportjs.org/docs/logout/
+
+```js
+const graphql = require('graphql');
+const {
+    GraphQLObjectType,
+    GraphQLString
+} = graphql;
+const UserType = require('./types/user_type');
+const AuthService = require('../services/auth');
+
+const mutation = new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+        signup: {
+            type: UserType,
+            args: {
+                email: { type: GraphQLString },
+                password: { type: GraphQLString }
+            },
+            resolve(parentValue, { email, password }, req) {
+                return AuthService.signup({ email, password, req });
+            }
+        },
+        logout: {
+                type: UserType,
+                resolve(parentValue, args, req) {
+                    const { user } = req;
+                    req.logout(); 
+                    return user;
+                }
+            }
+    }
+});
+```
+
+* So again it is just a very small order of operations thing here when we call req.logout. It removes the user property off the request object. So we first save a reference to the user property then we log the user out and then we return the user.
+
+```js
+// mutation request
+
+mutation{
+    logout {
+        email
+    }
+}
+```
+###  The Login Mutation
+
+* we already have server side logic with passport to login user, let us add mutation logic for this.
+
+```js
+login: {
+            type: UserType,
+            args: {
+                email: { type: GraphQLString },
+                password: { type: GraphQLString }
+            },
+            resolve(parentValue, { email, password }, req) {
+                return AuthService.login({ email, password, req });
+            }
+        }
+```
+* Mutation request will be as follows
+
+```js
+//request
+ mutation { 
+     login(email:"reachtoguna@gmail.com", password:"password"){
+         email
+     }
+ }
+```
+
+### Checking Authentication Status
+
+* We've got our sign up log out and log in mutations put together. But again we really don't have any useful way of figuring out whether or not the current user is authenticated.
+
+* Once we start moving over to the client side of this application we're very soon going to have to figure out whether or not the user is authenticated
+
+* because if they try to visit some route that requires the user to be logged in we want to be able to ask the question hey is this person actually logged in.Because if they're not we need to kick them out to somewhere else inside of our application and make sure that they first log in before they go to this protected route.
+
+* So to be able to make the determination of whether or not we are currently logged into our application I propose that we add a field to our root query type.
+
+* I'm going to suggest that we add a field to this object of maybe something just like user or current user and we'll just return the currently
+
+```js
+const graphql = require('graphql');
+const { GraphQLObjectType, GraphQLID } = graphql;
+const UserType = require('./user_type');
+
+const RootQueryType = new GraphQLObjectType({
+  name: 'RootQueryType',
+  fields: {
+      // return current logged in user
+    user: { 
+      type: UserType,
+      resolve(parentValue, args, req) {
+        return req.user;
       }
     }
   }
-`;
+});
 
-export default graphql(mutation)(LyricCreate);
+module.exports = RootQueryType;
 ```
+* Now as we've seen the request object gets some properties automatically placed on it by passport
 
-* I encourage you to generally make sure that if you are ever making use of some type of resource you do your best to always make sure that you're grabbing the same properties off of that resource.
+* whenever we authenticate a user. So that's passport kind of working behind the scenes to interact with the request object automatically.
+
+* So if the user is authenticated when they access this graph property right here the request object should have a record user property assigned to it if the user is not currently signed in. Then req.user will be undefined with graphql is going to translate into a value of No.
+
+* So I think you know what comes next who are going to give this a shot out inside of graphical
+
+```js
+mutation {
+    login(email:"reachtoguna@gmail.com", password:"password"){
+         email
+     }
+}
+```
+* And now in theory I am signed into our application as reachtoguna@gmail.com
+
+```js
+// request
+{
+    user {
+        email
+    }
+}
+```
+* and the response will be
+
+```js
+{
+    "data" : {
+        "user": {
+            "email": "reachtoguna@gmail.com"
+        }
+    }
+}
+```
+* If you try after logout and try this request, then we will get null response
+
+```js
+{
+    "data" : {
+        "user": {
+            "email": null
+        }
+    }
+}
+```
