@@ -1,536 +1,905 @@
 # GraphQL-React
 
-## Building From (Mostly) Scratch - Full stack
+## Moving Client Side
 
-### App Overview
+### Client Side Setup
 
-* In this course we've gone through one application where we focused on the back end one application where we focused on the front end and now we're going to focus on an app where we are concerned with the entire full stack.So everything from the back end database all the way to the front end.
+* We made some great progress on the server side of our application as we now have the ability to sign up a user logged them out and sign them back in. And also the ability to determine whether or not a user is currently authenticated
 
-* next application that we're going to be working on we're going to be working on an application using authentication with graphQL.
+* we can now start thinking about the client side of our application the client side of our application is going to be a re-act application that is backed by re-act router for handling navigation to some of the different pages.
 
-* So we've already had a lot of content where we've kind of figured out how to associate data sitting in our database with our graphQL queries
+* In header we will show signup and signIn button after user authenticated we will only show signout button.
 
-* We need to have a reasonable idea of how to authenticate our users and especially in the context of graphQL we need to understand how we tie our authentication system with graphQL quries.
+* I think we can probably go ahead and get started inside of our application on the client side by wiring up some of the Apollo boilerplate we'll open up our client directory and then find the index file.
 
-* because a extremely common case and we'll talk about this in great detail is figuring out exactly how to best restrict the amount of data that a user can feed that a user can see inside of our application.
-
-* especially in the context of graphQL we need to understand how we tie our authentication system with our graphQL because a extremely common case how to best restrict the amount of data that a user can feed that a user can see inside of our application.
-
-### App Challenges
-
-* Let's now talk about some of the big challenges of this application. (Refer : full1)
-
-* Last thing I want to talk about just a little bit is a little bit of the full stack approach that we're taking here in all the different technologies that we're going to be making use of.(Refer : full2)
-
-* No big changes here per say. We're still going to have a mongo DB database that is hosted by Mago lab. Again recall that we're making use of Mago lab just so that we do not have to set up a local Mongo DB database. And that also makes life a little bit easier when we migrate over to production.
-
-* So we don't have to worry about big differences in our database solution between production and our local environment
-
-* the server the web server that we're going to be making use of it's still going to be an express 
-
-* express is going to be hosting a graphQL instance and we're also still going to making use of Web pack for developing all of our client side assets
-
-* webpack and graphQL are going to be the main points of interface with our user inside the web browser where we're going to have our react js application.
-
-###  Boilerplate Setup
-
-```
-git clone https://github.com/StephenGrider/auth-graphql-starter
-
-npm install
-```
-* Now the general architecture of this project here is very similar to the ones the projects that we'veworked with previously.
-
-* So we have an index.js file at the very top level that starts up our app.We have a server folder with a bunch of our server related code and then a client folder that is supposed to be that is intended to contain some of the client side javascript code for our application.
-
-* I want to start off by looking at the code that is included inside of the client folder. So if I open up index.js
-
-* OK just route dead simple absolute minimum boilerplate for getting a re-act application on the screen we create the root component and then we render on the screen. That's pretty much it.
-
-* Now let's check out the source server folder. So there's definitely a couple of different folders inside of here.
-
-* There we create the root component and then we render on the screen. That's pretty much it. check server.js and auth.js
-
-### Authentication Approach
-
-* In the last section we installed our boilerplate package and took a look at some of the different files inside of it.
-
-* In particular we looked at the auth.js file and I had mentioned that there was some compatibility coding here that makes graphQL and passport work nicely and you'll certainly read a little bit about that.
-
-* So I want talk a little bit more about passport and how it works with the graphical side of our application.
-
-* Let's take a look at a diagram to help us understand this a little bit better.(Refer : full3)
-
-* to authenticate a user. We get some incoming request from, we might call a mystery user. We don't really know who is making the authentication request.(Refer : full3)
-
-* (Refer : full3) - The request will come in with some username and password and it's up to passport to figure out which user that is and authenticate them successfully.
-
-* So passport will take that username. It will look through its database it will find a user with that username and then it will compare the stored password with a password that was provided on the incoming request and decide whether or not the authentication request is valid or not if the request is valid than passport will say. Ah fantastic. This is user number so-and-so
-
-* and it will save a little token or a little note on the user's cookie so that any time the user makes a request in the future we will immediately know that that is user number 5 or user number 6 or 7 or 8 or whoever it might be.
-
-* So this is how authentication works and really the vast majority of applications in the world today.
-
-* So let's talk a little bit about how this authentication scheme is going to change once we start involving graphQL.
-
-* So when would you start involving graphQL with passport. There's really two different approaches that we can take which I like to refer to as a de-couple approach and a coupled approach. So these are two different methods of involving graphQL and passport together
-
-* we'll first talk about the de-coupled approach right now and we'll talk a little bit about a couple.And then some of the pros and cons between the two 
-
-* de-coupled approach - because we first take care of passport or all the authentication without any concern of graphQL whatsoever. GraphQL not involved in the slightest bit.(Refer : full4)
-
-* A user is still going to make some authentication request where they provide their username and password. Passport is going to attempt to authenticate them and then identify the user in some fashion and set the users cookie.
-
-* Then whenever that user makes any type of follow up request the request will be identified automatically by passport and then the request will enter into the graphQL phase.
-
-* GraphQL will say oh this is user so and so they've already been identified by passport. I'm going to give them all the data that they would deserve as you desired. No.5 , So then graft who will formulate the response and send it back to the client.
-
-* Now the one thing I want to point out about this solution right now is that I've talked about identifying the user.And if we really think about identifying the user it's kind of like a change in the authentication state of our application. And whenever I say the word change we should be thinking mutation right. That's what we've been saying about graphQL all along. Anytime we change anything about our application it's always a mutation.
-
-* So if we use this de-coupled approach and graphQL is not involved at all we're not making use of any type of mutation to our code or any type of mutation of our application state.
-
-* So let's look at what would happen if we do involve graphQL using this couple of approach  (Refer full5) by the way coupled approach and de-coupled approach this is not official terminology.By the way is this terminology that I introduced to help you understand what's going on here.
-
-* OK so let's talk about what's different with this coupled approach.So at the coupled approach we'll make use of a mutation to authenticate the user in some fashion.
-
-* So we'll have this incoming authentication request which will really be a mutation.(Refer full5) 
-
-* graphQL will see that the user is making a mutation or request to attempt to identify themselves and it will pass along the request to passport and say oh. Looks like they're attempting to identify or to identify or authenticate themselves in some fashion.
-
-* I'm going to let passport take care of this passport will then identify the user in some fashion. It will still place a little cookie or a little identifier on the user's cookie and then will hand the request back to graphQL and then grafphQL will respond with whatever appropriate data.(Refer full5) 
-
-* whenever the user makes that followup request. when request comes into the graphQL side of things already with an identified user or graftQL can fetch any relevant data for that user and respond in turn.
-
-* So when the couple approached the big key is that we're going to allow graphQL to receive the authenticating request and then pass along or defer handling that request to passport.
-
-* So no matter what passports always going to be involved in some fashion it's really a question of whether or not we're going to allow graphQL to handle the request.
-
-* So let's talk a little bit about the pros and cons of each of these approaches.
-
-* But I personally don't think that there is a one size fits all solution. And instead I want to inform you about some of the different alternatives so you can come to a conclusion by yourself and decide which approach is best for you.
-
-* Well to be honest with you I would not want to use the coupled approach because graphQL and passport are absolutely positively not set up to work well with each other in any way shape or fashion.
-
-* Now if there was some alternative as passport out there if there was some other authentication framework where we could just very easily say log is user end or log this user out then that would make this a much easier decision. But unfortunately passport is really the de facto standard of authentication in the nodeJs world.And so we're kind of stuck with it for now.
-
-* for this course. We're going to go with the coupled approach right here. So we're going to go with this approach where we allow graphQL to handle all things related to authentication. All incoming requests and it's going to delegate the actual authentication part off to passport. And I think that's going to work out nicely with the code that we end up writing on the graphQL side but again trust me there was some headache around putting together this compatibility layer between graphical and passport in the first place.
-
-### MLab Setup
-
-* We have spent a lot of time talking about different approaches of handling authentication with graphQL.
-
-* at the end of the day we agreed that going with a couple approach would probably make more sense for the app that we're going to work on right now
-
-* because I think it's just slightly more technically challenging and I would like to show you an example of some of the really complex sides of graphQL
-
-* So in this section we're going talk a little bit about the different types and mutations that I think that we'll need for application and then we'll start working on the first mutation or type or whatever we decide we need to make.
-
-* There is one less piece of set up I want to take care of.we have to get a mongo lab instance to throw in here.I want to do that sign up piece really quick or make that new database piece really quick and then we can move onto the authentication stuff and we won't have to worry about any set up code and anything like that in the future.
-
-* Create a database in mlab and then create user the use the URL in server.js and
-```js
-const MONGO_URI = 'mongodb://<dbuser>:<dbpassword>@ds1fs5t353.mlab.com:62334/auth';
-```
-* We've got our you are for our Mongo lab instance.
-
-### The User Type
-
-* With any type of graphQL application you ever work on it always pays to do a little bit of homework or design planning ahead of time to plan out all the different types and all the different mutations you expect to have in your application.So spend a little bit of time to plan out the different types and the different mutations we're going to have for our authentication app.
-
-* I think that we should have a single type called the user type and then we have three different mutations called Sign up log in and log out on mutation side.
-
-* I want to be able to create a new user through sign up, because we're not only creating new user but we're also authenticating our users at the same time we're considering them to be logged in
-
-* with a logging mutation. We are exchanging an e-mail or a username and password for the user's authentication.
-
-* And then with log out we're going to destroy the authentication state that is held between the client and the server.
-
-* The important thing to remember here is that all three of these are mutations because we are altering some of the data or some of the state that exist between our client and the server.
-
-* User type is Totally appropriate will make that user type and then add it to our root query and maybe the user can look at a list of different users or a very particular user or maybe even get a reference to just the current user as well.
-
-* So those would all be possible queries that we would add to the query type.
-
-* I want to first start by creating the user type and then once we've created that type we can start worrying about the different mutations that we're going to have 
-
-*  after we put all the types of mutations together we can start testing them inside of graphical 
-
-* and then once we are confident with how they work in graphical we'll move on over to the client side of our application and start working on the react side of things as well.
-
-* So let's get started first with our user type 
-
-* So in the past we created just one file that we called the schema file for all the different types of mutations inside of our application. This time I want to take a little bit more modular approach where we split out all the different types of mutations into separate files.
-
-* Inside the schema folder - types - user_types.js
+* So this is where we're going to do a lot of the initial setup of our application 
 
 ```js
-const graphql = require('graphql');
+import React from 'react';
+import ReactDOM from 'react-dom';
+import ApolloClient, { createNetworkInterface } from 'apollo-client';
+import { ApolloProvider } from 'react-apollo';
+
+const client = new ApolloClient({
+  dataIdFromObject: o => o.id /*Its purpose is to identify every record that comes back from the server */
+
+  /* So rather than refetching our data for every single query that is issued Apollo will have the ability to identify the information that its already been pulled down from the server and store it inside of some local cache.*/
+
+});
+
+const Root = () => {
+  return (
+    <div>
+    Auth Starter
+    </div>
+  );
+};
+
+ReactDOM.render(<Root />, document.querySelector('#root'));
+```
+
+* Now one thing I do want to point out is that the only type that were turning from our back and right now is the user type and we currently have not yet defined the ID on that type just yet we have not yet defined the ID field.
+
+```js
+const graphQL = require('graphql');
 const {
-    GraphQLObjectType,
-    GraphQLString
-} = graphql;
+  GraphQLObjectType,
+  GraphQLString,
+  GraphQLID
+} = graphQL;
 
 const UserType = new GraphQLObjectType({
-    name: 'UserType',
-    fields: {
-        email: { type: GraphQLString }
-    }
+  name: 'UserType',
+  fields: {
+    id: { type: GraphQLID },
+    email: { type: GraphQLString }
+  }
 });
 
 module.exports = UserType;
-```
 
-* Remember that whenever we work with a type it usually corresponds to a model of sorts in our database or a collection of data that sits in our database.
- 
- * The board the plate that we're making use of right now already has a user model defined inside the models/user.js So let's open that up and look at what the default model is 
+``` 
+* So remember that data ID from object. The assumption here is that every single record that comes back from our back end will have an id property defined on it. So that's why we just added that ID field to the user type.
 
- * in our database. We are currently storing just the email and password that is associated with each user. Now in no way shape or form does it really make sense to add the password to the fields object of our user type.
+* We need to make sure that whenever we ask for user from the back end we have to specify that we want the ID field as well. And that's just what allows the Apollo client to uniquely identify every record that we fetch
 
- * I am never ever going to think of a single situation where I want to for any reason expose the password field of any of my users.
+* So remember the Apollo client is just the piece of technology that interacts with our back end. It has no idea how to work with the re-act library. It's up to the Apollo provider to provide that glue layer the tween the Apollo client which fetches all the data and our re-act application which displays all the data.
 
- * Even though the password as it's saved in the database is going to be hashed insulted. So the password is not in plain text in the database. Nonetheless I cannot think of a single reason to ever expose that to the outside world And my graphQL schema.
-
- * So I think that as far as my user type goes the only field I really care about is the e-mail field. Like maybe it's totally reasonable to share a user's e-mail with other users inside the application.So I will expose the email field to everyone else.
-
- * So I'm going to take my user type and we'll define the name property and the fields property on it.
-
- ### The Signup Mutation
-
- * Now that we've got our user type put together we can start thinking about the different mutations that we're going to be working with.
-
- * When we started thinking about signing up logging in logging out all these different things. My head Personally I immediately start thinking about checking the user's password and reading users from the database and making sure that that a user's e-mail is not in use and the password exists and blah blah blah all these different steps that are all associated with signing a user in and just authentication in general.
-
- * So the question very quickly becomes where do we put all that logic and where do we put all the logic for comparing a user's password or making sure they that a valid e-mail was provided.
-
- * Do we stuff that all into the resolve function for each mutation. The answer is unequivocally no. No it's not.
-
- * For every mutation that we write we want to ensure that as little logic as possible is located in the mutation itself.
-
- * So for every one of these mutations we're going to work with Sign-Up log in log out. We are going to have one with three lines of logic at most inside of every resolved function
-
- * rather than placing all the logic first say creating a new user inside the mutation. We were always going to delegate to an outside helper function or a Helper Object or a helper service of some sorts.
-
- * Remember that the idea behind graphQL is that it's kind of an abstraction layer of sorts between our front end and our true backend which might consist of many different services running in our background.
-
- * In theory any one of those services might change in some very fundamental way at any time.And so it really make sure that we don't couple are backend service too closely with our graphQL code. which is really just there to be kind of a presentation layer of all the different data in our application.
-
- * So rather than stuffing all authentication logic inside the mutations itself we're going to make use of outside helper functions and outside objects.
-
- * Now again we spoke about this in the last few sections for the project that we're working on making passport and graphQL work nicely is a little bit of a pain in the rear.So I've taken the liberty of writing out a couple of these helper functions for us but we certainly will go back to the code and take a look at it and say hey look at all the stuff that we did not place inside the mutation.
-
- * So with that in mind let's get started with our different mutations.I'm going to make a single file to house all the different mutations of my project.
-
- * Now again I could certainly make a folder of sorts and place a bunch of different mutations in that folder and then reference it from somewhere else for this time. I'm going to make a single file because as you're going to see our mutations are going to end up being very small and very compact.
-
- * So inside of my schema directory I'm going to make a new file called mutations.js then inside of here will place some of our boilerplate code for working with mutations.
-
- ```js
- const graphQL = require('graphql');
-const {
-    GraphQLObjectType,
-    GraphQLString
-} = graphQL;
-const UserType = require('./types/user_type');
-
-const mutation = new GraphQLObjectType({
-    name: 'Mutation',
-    fields: {
-        signup: {
-            type: UserType,
-            args: {
-                email: { type: GraphQLString },
-                password: { type: GraphQLString }
-            },
-            resolve(parentValue, { email, password }, req) { 
-              
-              /* The third argument in here that we really care about is something called request, request right here represents the request object coming from Express. */
-            }
-        }
-    }
-});
-
-module.exports = mutation;
- ```
-### Delegating to the Auth Service
-
-* In the last section we started doing a little bit of work on our sign up mutation. We defined the result function and we also spoke a little bit about the third argument that we've never spoken about what the result function which is the incoming requests from our express server.
-
-* The authentication service that's already been included with the starter project relies heavily upon this request object right here.
-
-* So it's definitely important that we maintain that request object and we pass it to the auth service and we try to sign up for an account.
-
-*  let's go and look at the auto service really quick and figure out exactly how we sign up for a new account given some email and password.
-
-* In auth.js file if we call the sign up function with an email a password and a request object. This being the request object from the Express side of our application it will automatically attempt to sign up a new user for our application and then save them and log them into our application.
-
-* So if we import this function right here into our mutations file and we call the sign up function with the e-mail password in requesting that result function then presumably that will create our new user and automatically log the user in.
-
-* Let us try, I know that it's a little bit painful to make use of this function without having built it ourselves. Again there's some kind of nasty stuff in here around making passport work nicely with graphQL
-
-* really what's happening is graphQL expects to receive a promise for dealing with any asynchronous code but passport has no built in support for promises.
-
-* And so that's kind of where there's a mismatch in the expected API here.
-And that's why you see this kind of nasty looking promise statement inside of the sign up function. (Refer auth.js sign up function)
-
-* Let us import and use this sign up function in our graphql mutation
+* Rather than just showing div we will wrap apollo provicer add in the Apollo provider we'll pass it to the client that we just created 
 
 ```js
- const graphQL = require('graphql');
-const {
-    GraphQLObjectType,
-    GraphQLString
-} = graphQL;
-const UserType = require('./types/user_type');
-const AuthService = require('../services/auth');
+import React from 'react';
+import ReactDOM from 'react-dom';
+import ApolloClient, { createNetworkInterface } from 'apollo-client';
+import { ApolloProvider } from 'react-apollo';
 
-const mutation = new GraphQLObjectType({
-    name: 'Mutation',
-    fields: {
-        signup: {
-            type: UserType,
-            args: {
-                email: { type: GraphQLString },
-                password: { type: GraphQLString }
-            },
-            resolve(parentValue, { email, password }, req) { 
-                 return AuthService.signup({ email, password, req });
-            }
-        }
-    }
+const client = new ApolloClient({
+  dataIdFromObject: o => o.id
 });
 
-module.exports = mutation;
- ```
- * Now remember signing up a new user is going to have to interact with the database in some fashion.
+const Root = () => {
+  return (
+    <ApolloProvider client={client}>  
+        <div>
+            Auth Starter
+        </div>
+    </ApolloProvider>
+  );
+};
 
- * Not only do we have to make sure that the email is not in use. So we're going to have to look over our entire list of emails and our user collection but we're also going to have to save a new user to the database as well.
+ReactDOM.render(<Root />, document.querySelector('#root'));
+```
+* I think we could probably give us a test out inside of our browser and just make sure that we still see the text Auth. starter on the screen.
 
- * So this is a lot of asynchronous calls which means that the AuthService.signup function right here returns a promise 
+### Root Routes with React Router   
 
- * whenever we return a promise from our resolve function So that graphQL knows to look at the promise that gets returned right here and say okay I'm going to hold up for a second and wait for this operation to resolve before I attempt to return any values to my front end.
+* We've now got some of our boilerplate together for starting up our Appollo client which means we can start moving over to the re-act router side of our application.
 
- * So our Sign-Up resolve function right now is incredibly small. It's exactly one line of code and rather than putting all the logic in the resolve function for actually signing up a user We're placing all that kind of business logic is what I really want to call it inside of a helper function or a helper object.
+* One thing I want to add into our discussion about all the different components we'll have is that just to make re-act router work nicely we will have a top level app component which will be responsible for always showing the header on the screen
 
- * So this right here is a very nice looking mutation. It just says hey I don't really know what's going on here. I'm just going to completely delegate handling all this Sign-Up business to this outside piece of code.
+* All the re-act router configuration that we're going to have will be around deciding what to show on the body of the app component.
 
- ### Testing Signup
+* Everything besides the header that we're going to be swapping out with different routes.So going from the landing form to the sign up form etc.
 
- * we finished up the sign up mutation and we're just about ready to test it inside of graphical.
+* we'll start off first by importing the re-act router library and a couple of different properties from it.So at the top we'll grab our router object the hash history object route and index routes and all this is coming from re-act router.
 
- * There is a little bit of last minute set up that we have to do inside of our project ahead of time though we do have to make sure that we wire up these newly created mutations to our schema inside of the schema.js file.So inside of schema Geass we will import or require in our mutation file.
+```js
+import React from 'react';
+import ReactDOM from 'react-dom';
+import ApolloClient from 'apollo-client';
+import { ApolloProvider } from 'react-apollo';
+import { Router, hashHistory, Route, IndexRoute } from 'react-router';
 
- ```js
- const graphql = require('graphql');
-const { GraphQLSchema } = graphql;
+import App from './components/app';
 
-const RootQueryType = require('./types/root_query_type');
-const mutation = require('./mutations'); //here
 
-module.exports = new GraphQLSchema({
-  query: RootQueryType,
-  mutation //here
+const client = new ApolloClient({
+  dataIdFromObject: o => o.id
 });
 
- ```
- * Now in types/root_query type we need atleast one field. let us add some dummy field for now.
+const Root = () => {
+  return (
+    <ApolloProvider client={client}>
+      <Router history={hashHistory}>
+        <Route path="/" component={App}>
 
- ```js
-const graphql = require('graphql');
-const { GraphQLObjectType, GraphQLID } = graphql;
+        </Route>
+      </Router>
+    </ApolloProvider>
+  );
+};
 
-const RootQueryType = new GraphQLObjectType({
-  name: 'RootQueryType',
-  fields: {
-    dummyField : GraphQLID
+ReactDOM.render(<Root />, document.querySelector('#root'));
+
+```
+* we'll first create our router and we'll tell it that we want to use hashHistory. Again we've had a little bit of a discussion about the use of hashHistory here as opposed to browser history.
+
+* We're using hash history as opposed to browser history just because it's a lot more flexible when you want to move the hosting environment here
+
+* when we making use of hash history We don't really have to worry quite so much about the proper or correct set up inside of the Express side of our application 
+
+* It's now inside of here.I want my root component which is what's always going to be displayed on the screen at all times to be something that we're going to call the app component.
+
+* So again the app component is always going to show the header and then it will show any nested component inside of it as well.right now let's define this app component and make sure that it always shows a header component which we also need to define.
+
+```js
+import React from 'react';
+import Header from './Header';
+
+const App = (props) => {
+  return (
+    <div className="container">
+      <Header />
+      {props.children}
+    </div>
+  );
+};
+
+export default App;
+```
+* we have to define Header component also
+
+```js
+// Header.js
+import React, { Component } from 'react';
+
+class Header extends Component {
+  render() {
+    return (
+        <div>
+            Header
+        </div>
+    );
   }
-});
+}
 
-module.exports = RootQueryType;
- ```
- * Now we'll start up the project with the very classic command and then npm run dev.
-
- * Now let's write signup query in graphql
-
- ```js
- //request
- mutation { 
-     singup(email:"reachtoguna@gmail.com", password:"password"){
-         email
-     }
- }
- ```
- * We will get response data with saved email.
-
- * So presumably we can kind of assume at this point that a user has been added to our users collection in our lab database and more importantly that we are currently authenticated or signed into our application number that's what the real goal here is of the Sign-Up mutation. It's not only to create a new user it is also to simultaneously authenticate ourselves with the application as well
-
-* Lets move to mlab and check this entry
-
-* I should see automatically a new collection appear on the list here. So here's the users collection that was just created automatically. You'll notice that there's also a sessions collection in here as well. That's part of the session record keeping part of express that is already wired up inside of our project.
-
-* So let's look at the users collection looks like our user was successfully created.
-
-* You'll also notice that our password is in here as well and it is absolutely not a plain text password.So it is salted and hashed which means that if anyone just happens to get access to all of our user records including all of our user passwords they'll have a heck of a time trying to figure out the user's actual password from this encrypted string right here.
-
-* So it looks like our sign up at least the user creation side is working correctly. Again my expectation right now is that in addition to creating this new user I should have also gotten a cookie place on my session or I should say and identify or place on my session that says hey whoever's making requests from this browser right here and we consider them to be authenticated.
-
-* So we don't really have any good way of proving that on our server just yet. We don't really have any good way of testing authentication. We certainly will in a moment but right now we're just going to have to kind of take it on blind faith that we are being successfully authenticate with our server.
-
-### The Logout Mutation
-
-* so logging out user is going to be another type of mutation that we put together.
-
-* passport that's going to handle really signing out a user all the mutation that we're writing here is going to do is make sure to instruct passport to sign out the user
-
-* check passport js logout method Refer : http://www.passportjs.org/docs/logout/
-
-```js
-const graphql = require('graphql');
-const {
-    GraphQLObjectType,
-    GraphQLString
-} = graphql;
-const UserType = require('./types/user_type');
-const AuthService = require('../services/auth');
-
-const mutation = new GraphQLObjectType({
-    name: 'Mutation',
-    fields: {
-        signup: {
-            type: UserType,
-            args: {
-                email: { type: GraphQLString },
-                password: { type: GraphQLString }
-            },
-            resolve(parentValue, { email, password }, req) {
-                return AuthService.signup({ email, password, req });
-            }
-        },
-        logout: {
-                type: UserType,
-                resolve(parentValue, args, req) {
-                    const { user } = req;
-                    req.logout(); 
-                    return user;
-                }
-            }
-    }
-});
+export default Header
 ```
+### Figuring Out the Current User
 
-* So again it is just a very small order of operations thing here when we call req.logout. It removes the user property off the request object. So we first save a reference to the user property then we log the user out and then we return the user.
+* Now that we've got the header on the screen we need to start thinking about what content it needs to show.
+
+* we want to make sure that it shows the correct buttons inside the head or depending on whether or not the user is currently authenticated with our application.
+
+* So when our Header first loads up I'm going to suggest that maybe we make a query to get our current authentication state. if the user is currently signed in we'll show a set of buttons that allow the user to log out.
+
+* Now if the user is not currently authenticated so if they are not yet signed into our application we can show a set of login buttons 
 
 ```js
-// mutation request
-
-mutation{
-    logout {
+//graphical query
+{
+    user{
+        id
         email
     }
 }
 ```
-###  The Login Mutation
 
-* we already have server side logic with passport to login user, let us add mutation logic for this.
+* Now one of the last queries that we wrote was actually to test the current user query on the root the root query type.
 
-```js
-login: {
-            type: UserType,
-            args: {
-                email: { type: GraphQLString },
-                password: { type: GraphQLString }
-            },
-            resolve(parentValue, { email, password }, req) {
-                return AuthService.login({ email, password, req });
-            }
-        }
-```
-* Mutation request will be as follows
+* we get back the ID and the e-mail of that user just as we would expect.
+
+* Lets place this query in seperate query and we can import wherever we need.
 
 ```js
-//request
- mutation { 
-     login(email:"reachtoguna@gmail.com", password:"password"){
-         email
-     }
- }
-```
+// gueries/CurrentUser.js
+import gql from 'graphql-tag';
 
-### Checking Authentication Status
-
-* We've got our sign up log out and log in mutations put together. But again we really don't have any useful way of figuring out whether or not the current user is authenticated.
-
-* Once we start moving over to the client side of this application we're very soon going to have to figure out whether or not the user is authenticated
-
-* because if they try to visit some route that requires the user to be logged in we want to be able to ask the question hey is this person actually logged in.Because if they're not we need to kick them out to somewhere else inside of our application and make sure that they first log in before they go to this protected route.
-
-* So to be able to make the determination of whether or not we are currently logged into our application I propose that we add a field to our root query type.
-
-* I'm going to suggest that we add a field to this object of maybe something just like user or current user and we'll just return the currently
-
-```js
-const graphql = require('graphql');
-const { GraphQLObjectType, GraphQLID } = graphql;
-const UserType = require('./user_type');
-
-const RootQueryType = new GraphQLObjectType({
-  name: 'RootQueryType',
-  fields: {
-      // return current logged in user
-    user: { 
-      type: UserType,
-      resolve(parentValue, args, req) {
-        return req.user;
-      }
-    }
-  }
-});
-
-module.exports = RootQueryType;
-```
-* Now as we've seen the request object gets some properties automatically placed on it by passport
-
-* whenever we authenticate a user. So that's passport kind of working behind the scenes to interact with the request object automatically.
-
-* So if the user is authenticated when they access this graph property right here the request object should have a record user property assigned to it if the user is not currently signed in. Then req.user will be undefined with graphql is going to translate into a value of No.
-
-* So I think you know what comes next who are going to give this a shot out inside of graphical
-
-```js
-mutation {
-    login(email:"reachtoguna@gmail.com", password:"password"){
-         email
-     }
-}
-```
-* And now in theory I am signed into our application as reachtoguna@gmail.com
-
-```js
-// request
-{
+export default gql`
+  {
     user {
-        email
+  		id
+      email
     }
-}
+  }
+`;
 ```
-* and the response will be
+* Now we can use this in our header component
+```js
+// Header.js
+import React, { Component } from 'react';
+import { graphql } from 'react-apollo';
+import query from '../queries/CurrentUser';
+
+class Header extends Component {
+  render() {
+      console(this.props.data);
+    return (
+        <div>
+            Header
+        </div>
+    );
+  }
+}
+
+export default graphql(query)(Header);
+```
+* I'm going to flip on over to my application I can refresh the page and I get my two queries console log as expected.
+
+* Remember that the first result right here is from when before the query is actually completed.and then the component renders another time. Once the component or some new ones the query has been completed.
+
+* So let's look at the data on these things and see what we have available.So it looks like in the case that the user or the query has not been completed loading is true and we've seen this property several times before.
+
+* Chances are that when loading is true we have not yet fetched any details about the user whatsoever.
+
+* In our graphical we got user information but this query after completed sends user as null value, 
+
+* So it looks like between graphical and our application there is a little bit of a disagreement on whether or not we're currently authenticated.
+
+* So let's take a pause from our head or in the next section and let's figure out what's going on here and let's figure out why our current user is not correctly being fetched inside of our application.
+
+### Including Cookies with GraphQL Requests
+
+* In the last section we added in a little query to figure out whether or not the user is currently authenticated. Now to be 100 percent clear I am currently authenticated with the back end server.So when I'm sitting in graphical and I run the query to fetch the current user I get a response back. So I'm definitely authenticated according to graphical but inside of my application when I run the same query to fetch the current user I get a response of null.
+
+* So clearly something either in graphical or inside of my application is not functioning the way I expect because there is a big difference in the response that I get from each query (graphical and application). Even though the query is identical.
+
+* So this is one of the biggest gotchas in the world around Appollo. One of the biggest gotchas.
+
+* Let's take a look at a diagram that's going to help us understand exactly what's happening and what's going wrong with our application. (Refer : full6)
+
+* remember that with this coupled approach we allow mutation to handle all of the different authentication operations that we have.
+
+* So we rely on a mutation to figure out or to signin to log out all that kind of good stuff.
+
+* Whenever we make requests to our back end using graphQL so whenever we execute a query whenever we execute a mutation by default graphQL does not attempt to attach any of our cookies to the request. 
+
+* What that means is when a request goes from our browser to our back end graphQL it does not attach any of the information that identifies us to our backend server.
+
+* So inside of graphical when we execute this query graphical by default does attach queries to the request.
+
+* So I run this through this query right here. My query is issued to the backend server and my cookie is sent along as well. That identifies me to the back end server 
+
+* That identifies me to the back end server the back end server looks at the cookie. It identifies me as user test@test.com It sends the response back that contains the current user
+
+* inside of my application.However when my request is made to identify the current user by default my cookies are not included with that request.
+
+* And so when the server looks at the request to figure out hey what am I trying to do here. Passport is not able to identify the current user. And so when we attempt to return the current user the server says well they didn't pass along any cookies. I guess it's just some anonymous person. I'm not going to make any assumptions about who they are.
+
+* So in short by default graphQL does not send along cookies which tends to break authentication just right out of the box. If you're depending upon cookies for handling authentication.
+
+* So what we really have to do here is do a little bit of configuration for graphQL to instructed that it needs to send along our cookies with every single request.
+
+* And then we should be able to run the same query and get back to the current user from our backend as we would expect.
+
+* So again it's really just going to be a tiny bit of configuration with our GraphQL client
+
+* Remember is the Apollo client that is making actual requests to the back end server.
+
+* We can customize the way in which these requests are being made by specifying another option inside of this options object called the network interface
+
+* the network interface is a little piece of code inside of the Apollo client that is in charge of making actual net network requests to our back and server.
 
 ```js
-{
-    "data" : {
-        "user": {
-            "email": "reachtoguna@gmail.com"
-        }
-    }
-}
+import React from 'react';
+import ReactDOM from 'react-dom';
+//createNetworkInterface helper function
+import ApolloClient, { createNetworkInterface } from 'apollo-client'; 
+import { ApolloProvider } from 'react-apollo';
+import { Router, hashHistory, Route, IndexRoute } from 'react-router';
+
+import App from './components/app';
+
+const networkInterface = createNetworkInterface({
+  uri: '/graphql', /*  I've said several times that the Apollo client assumes that your graphical client on the Express side is listening on the endpoint /graphql.*/
+
+  /* Well remember we set that up as said of some of the configuration inside of our server.js file.*/
+
+  opts: {
+      // short for options property.
+    credentials: 'same-origin'
+    /* This is the magic line right here.The credentials are key of same origin means hey you're making requests to the same origin that the browser is currently on the long of the short of it is that this says it's safe to attempt to send along cookies with the outgoing request.*/
+  }
+});
+
+const client = new ApolloClient({
+  networkInterface, /* So now we're going to take this network interface and pass it along to the Apollo client. */
+  dataIdFromObject: o => o.id
+});
+
+const Root = () => {
+  return (
+    <ApolloProvider client={client}>
+      <Router history={hashHistory}>
+        <Route path="/" component={App}>
+
+        </Route>
+      </Router>
+    </ApolloProvider>
+  );
+};
+
+ReactDOM.render(<Root />, document.querySelector('#root'));
+
 ```
-* If you try after logout and try this request, then we will get null response
+
+* whenever you make a request to the back end. Just make sure you send along some cookies along with the request. Then we'll take that network interface and pass it along to this Appollo client.
+
+* you might be thinking if Apollo client assumes that the server is listening on the route graphQL why are we redefining that right here.
+
+* And the aswer is whenever you create your own network interface it no longer makes the assumption that your End Point is hosted at /graphQL.
+
+* Well so we're just very directly saying yeah it's still the same end point. Don't worry you're still going to use the same end point as before.
+
+* credentials: 'same-origin' - This is the magic line right here.The credentials are key of same origin means hey you're making requests to the same origin that the browser is currently on the long of the short of it is that this says it's safe to attempt to send along cookies with the outgoing request
+
+* It should send along cookies whenever it makes a query to the backend server.
+
+* When Apollo tends to make a request to our graphQL server it's going to include cookies with the request when the request hits our express Server Express will automatically populate the request.user field.And so our graphQL server will understand who the current user of our application is.
+
+* If you refresh the application, we will get the console data as we expected
+
+### Authentication State
 
 ```js
-{
-    "data" : {
-        "user": {
-            "email": null
-        }
+// Header.js
+import React, { Component } from 'react';
+import { graphql } from 'react-apollo';
+import query from '../queries/CurrentUser';
+import { Link } from 'react-router';
+
+class Header extends Component {
+
+  renderButtons() {
+    const { loading, user } = this.props.data;
+
+    if (loading) { return <div />; }
+
+    if (user) {
+      return (
+        <li>Logout</li>
+      );
+    } else {
+      return (
+        <div>
+          <li>
+            <Link to="/signup">Signup</Link>
+          </li>
+          <li>
+            <Link to="/login">Login</Link>
+          </li>
+        </div>
+      );
+    }
+  }
+
+  render() {
+    return (
+      <nav>
+        <div className="nav-wrapper">
+          <Link to="/" className="brand-logo left">
+            Home
+          </Link>
+          <ul className="right">
+            {this.renderButtons()}
+          </ul>
+        </div>
+      </nav>
+    );
+  }
+}
+
+export default graphql(query)(Header);
+```
+
+* Lets add logout as link 
+
+```js
+import React, { Component } from 'react';
+import { graphql } from 'react-apollo';
+import { Link } from 'react-router';
+import query from '../queries/CurrentUser';
+import mutation from '../mutations/Logout';
+
+class Header extends Component {
+  onLogoutClick() {
+    this.props.mutate({
+    // refetchQueries: [{ query : query}] 
+      refetchQueries: [{ query }] // refetch after logout to update query
+    });
+  }
+
+  renderButtons() {
+    const { loading, user } = this.props.data;
+
+    if (loading) { return <div />; }
+
+    if (user) {
+      return (
+        <li><a onClick={this.onLogoutClick.bind(this)}>Logout</a></li>
+      );
+    } else {
+      return (
+        <div>
+          <li>
+            <Link to="/signup">Signup</Link>
+          </li>
+          <li>
+            <Link to="/login">Login</Link>
+          </li>
+        </div>
+      );
+    }
+  }
+
+  render() {
+    return (
+      <nav>
+        <div className="nav-wrapper">
+          <Link to="/" className="brand-logo left">
+            Home
+          </Link>
+          <ul className="right">
+            {this.renderButtons()}
+          </ul>
+        </div>
+      </nav>
+    );
+  }
+}
+
+export default graphql(mutation)(
+  graphql(query)(Header)
+);
+```
+
+* Make sure we added logout mutation logic 
+
+```js
+import gql from 'graphql-tag';
+
+export default gql`
+  mutation {
+    logout {
+      id
+      email
+    }
+  }
+`;
+
+```
+
+* OK so it's looking pretty good after mutation runs rerun this queery render any component that is associated with that query. And I will expect to see the header automatically update on the screen.
+
+* Lets login with graphical login and then check application it should show logout button
+
+```
+mutation { 
+    login(email : "test@test.com", password :"password") {
+        id
     }
 }
 ```
+
+* So I should now have a running session with the server which means I should be able to flip back over to my application refresh the page I see log out appear on the screen
+
+* of course we're running this application locally but we want to remind you that our MongoDB database is hosted remotely. So even though our application itself is hosted locally the data that we're fetching is from some remote server. So the speed with which this button up on the top right hand side renders is pretty darn representative of how I would expect this to render inside of a production environment.
+
+###  Login Form Design
+
+* I'm thinking that we'll make a log in form component and a sign up form component but they will both make use of a common component called the auth form 
+
+* the auth form right here. Will it contain the actual form element with the labels the inputs and the buttons that we want to show on the form itself.
+
+* But as soon as the user clicks submit to submit the form will pass us and we will call a callback that is passed from the parent down into the auth form.
+
+* By doing that we can have all the common logic around rendering the form itself inside of the auth form but for handling the very customized logic around which mutation we call to actually log in or sign up the user we can to find that mutation inside of the parent component.
+
+* Inside of my components directory I'm going to make a new file called loggin form.
+
+```js
+import React, { Component } from 'react';
+
+class LoginForm extends Component {
+
+  render() {
+    return (
+      <div>
+        <h3>Login</h3>
+      </div>
+    );
+  }
+}
+
+export default LoginForm;
+```
+* Now we can import and use this in our app component
+
+```js
+<ApolloProvider client={client}>
+      <Router history={hashHistory}>
+        <Route path="/" component={App}>
+          <Route path="login" component={LoginForm} />
+          
+        </Route>
+      </Router>
+    </ApolloProvider>
+```
+### The Auth Form
+
+* We've got our log in form on the screen right now. I want to make sure that we have a separate component called auth form that is going to render the actual form that the user is going to type their input into.
+
+* this would be a pretty straightforward component. It's going to house a simple form that's going to show some details or associated inputs to the user.
+
+```js
+import React, { Component } from 'react';
+
+class AuthForm extends Component {
+
+/* So let's for first define our component level state and then we'll put together the actual form. So in the constructor we will receive our prop's object and we'll initialize our state first by pulling super with props.*/
+
+  constructor(props) {
+    super(props);
+
+    this.state = { email: '', password: '' };
+  }
+
+  render() {
+    return (
+      <div className="row">
+        <form className="col s6">
+          <div className="input-field">
+            <input
+              placeholder="Email"
+              value={this.state.email}
+              onChange={e => this.setState({ email: e.target.value })}
+            />
+          </div>
+          <div className="input-field">
+            <input
+              placeholder="Password"
+              type="password"
+              value={this.state.password}
+              onChange={e => this.setState({ password: e.target.value})}
+            />
+          </div>
+          <button className="btn">Submit</button>
+        </form>
+      </div>
+    );
+  }
+}
+
+export default AuthForm;
+```
+
+* The last thing you have to do is think about how we're going to intercept the form being submitted. Let's first place this on the form inside of the log and form and then we can think about adding in a callback handler for the actual submit event.
+
+* So I'm going to flip on over to the login form I want to import the form that we just created and show it inside of the log in form and then we'll pass a couple of props down into it to customize what auth form does whenever it is submitted.
+
+```js
+import React, { Component } from 'react';
+import AuthForm from './AuthForm';
+
+class LoginForm extends Component {
+
+  render() {
+    return (
+      <div>
+        <h3>Login</h3>
+         <AuthForm />
+      </div>
+    );
+  }
+}
+
+export default LoginForm;
+```
+* Now auth form visible inside of login form
+
+### Importing the Login Mutation
+
+* In the last section and we put together our art form in its entirety we now need to make sure that whenever the user submits this form right here we call mutation to log the user in.
+
+* So as a reminder this is logging the user and we're not attempting to sign up the user just yet.
+
+* First off we need to be aware that whenever we submit our mutation there might be some errors that get returned to us.
+
+* So maybe user enters in the incorrect password maybe they enter in an email that doesn't exist.We have to figure out some way to communicate those errors back down into the form to get them to show up on the screen so that the user knows that they need to make a little change to their log in information.
+
+* But first let's worry about just putting the mutation together and then we'll come back wired up to the component itself and then worry about dealing with the error handling.
+
+```js
+//mutation/Login.js
+import gql from 'graphql-tag';
+
+export default gql`
+  mutation Login($email: String, $password: String) {
+    login(email: $email, password: $password) {
+      id
+      email
+    }
+  }
+`;
+```
+* So the last thing we have to do is wired up to our log in form and then we can worry about passing it down as some type of callback or something like that to the actual Auth form.
+
+* Ok so now our last step is going to be to take the graph view all helper take the mutation and push it up together with the log in form.
+
+```js
+import React, { Component } from 'react';
+import AuthForm from './AuthForm';
+import mutation from '../mutations/Login';
+
+class LoginForm extends Component {
+
+  render() {
+    return (
+      <div>
+        <h3>Login</h3>
+         <AuthForm />
+      </div>
+    );
+  }
+}
+
+export default graphql(mutation)(LoginForm);
+```
+### Submitting the Auth Form
+
+* Login form now has access to the log in mutation, emember that whenever we call the log and mutation from within the component we call it this.props.mutate this mutation in particular expects both an email and a password as query variables to be provided.
+
+* So we have to somehow get our component level state from the Auth form and move it on up into the login form.In practice this is going to end up as being a simple callback.
+
+* So I'm going to define a callback inside of the log in form and then I'll pass that down to the auth form and it should be called whenever the form inside out then gets submitted.
+
+```js
+import React, { Component } from 'react';
+import AuthForm from './AuthForm';
+import mutation from '../mutations/Login';
+import { graphql } from 'react-apollo';
+import query from '../queries/CurrentUser';
+
+class LoginForm extends Component {
+
+  onLoginFormSubmit({ email, password }) {
+    this.props.mutate({
+      variables: { email, password }
+    });
+  }
+
+  render() {
+    return (
+      <div>
+        <h3>Login</h3>
+        <AuthForm
+          onLoginSubmit={this.onLoginFormSubmit.bind(this)}
+        />
+      </div>
+    );
+  }
+}
+
+export default graphql(query)(
+  graphql(mutation)(LoginForm)
+);
+
+```
+* So now inside auth form whenever the forms get submitted. Make sure that we call on submit and pass in both the email and password that the user is trying to authenticate with.
+
+```js
+import React, { Component } from 'react';
+
+class AuthForm extends Component {
+  constructor(props) {
+    super(props);
+
+    this.state = { email: '', password: '' };
+  }
+
+  onAuthSubmit(event) {
+      //here
+    event.preventDefault();
+
+    this.props.onLoginSubmit(this.state); // here we sent state with email and password
+    //this.props.onLoginSubmit -> from login auth component props 
+  }
+
+  render() {
+      // form onSubmit bind with onSubmit function
+    return (
+      <div className="row">
+        <form onSubmit={this.onAuthSubmit.bind(this)} className="col s6">
+          <div className="input-field">
+            <input
+              placeholder="Email"
+              value={this.state.email}
+              onChange={e => this.setState({ email: e.target.value })}
+            />
+          </div>
+          <div className="input-field">
+            <input
+              placeholder="Password"
+              type="password"
+              value={this.state.password}
+              onChange={e => this.setState({ password: e.target.value})}
+            />
+          </div>
+          <button className="btn">Submit</button>
+        </form>
+      </div>
+    );
+  }
+}
+
+export default AuthForm;
+```
+
+* With this change we successfully logged in 
+
+* So that's a little bit more the way I expect so I am successfully signing in here. But again you'll notice I am not successfully updating the header in this case so my application state is not quite reflecting the fact that my user is now signed into the application.
+
+###  Refreshing the Current User and Error Handling with GraphQL
+
+* In the last section we finished up our log in form and we were able to see the mutation successfully the issued to our back end.
+
+* after mutation we didn't see the header update and we didn't get automatically navigated anywhere.
+
+* We need to update header and also we need to handle error. The first thing I'd like to take care of is make sure that we're maintaining the header in the correct fashion.
+
+* In login form
+
+```js
+onSubmit({ email, password }) {
+    this.props.mutate({
+      variables: { email, password },
+      refetchQueries: [{ query }]
+    }).catch(res => {
+        // collect all the errors and put this into a single array
+      const errors = res.graphQLErrors.map(error => error.message);
+      this.setState({ errors });
+    });
+  }
+```
+* Now we need to pass this error to the auth component and show there 
+
+```js
+// Login form
+render() {
+    return (
+      <div>
+        <h3>Login</h3>
+        <AuthForm
+          errors={this.state.errors}
+          onSubmit={this.onSubmit.bind(this)}
+        />
+      </div>
+    );
+  }
+```
+* Now we can populate this erroe in our Auth template as follows
+
+```js
+render() {
+    return (
+      <div className="row">
+        <form onSubmit={this.onSubmit.bind(this)} className="col s6">
+          <div className="input-field">
+            <input
+              placeholder="Email"
+              value={this.state.email}
+              onChange={e => this.setState({ email: e.target.value })}
+            />
+          </div>
+          <div className="input-field">
+            <input
+              placeholder="Password"
+              type="password"
+              value={this.state.password}
+              onChange={e => this.setState({ password: e.target.value})}
+            />
+          </div>
+          <div className="errors">
+            {this.props.errors.map(error => <div key={error}>{error}</div>)}
+          </div>
+          <button className="btn">Submit</button>
+        </form>
+      </div>
+    );
+  }
+```
+### The Signup Mutation
+```js
+import React, { Component } from 'react';
+import AuthForm from './AuthForm';
+import { graphql } from 'react-apollo';
+import mutation from '../mutations/Signup';
+import query from '../queries/CurrentUser';
+import { hashHistory } from 'react-router';
+
+class SignupForm extends Component {
+  constructor(props) {
+    super(props);
+
+    this.state = { errors: [] };
+  }
+
+  onSubmit({ email, password }) {
+    this.props.mutate({
+      variables: { email, password },
+      refetchQueries: [{ query }]
+    }).catch(res => {
+      const errors = res.graphQLErrors.map(error => error.message);
+      this.setState({ errors });
+    });
+  }
+
+  render() {
+    return (
+      <div>
+        <h3>Sign Up</h3>
+        <AuthForm
+          errors={this.state.errors}
+          onSubmit={this.onSubmit.bind(this)}
+        />
+      </div>
+    );
+  }
+}
+
+export default graphql(query)(
+  graphql(mutation)(SignupForm)
+);
+
+```
+* Let us use this router in our index.js
+```js
+import React from 'react';
+import ReactDOM from 'react-dom';
+import ApolloClient, { createNetworkInterface } from 'apollo-client';
+import { ApolloProvider } from 'react-apollo';
+import { Router, hashHistory, Route, IndexRoute } from 'react-router';
+
+import App from './components/app';
+import LoginForm from './components/LoginForm';
+import SignupForm from './components/SignupForm';
+
+const networkInterface = createNetworkInterface({
+  uri: '/graphql',
+  opts: {
+    credentials: 'same-origin'
+  }
+});
+
+const client = new ApolloClient({
+  networkInterface,
+  dataIdFromObject: o => o.id
+});
+
+const Root = () => {
+  return (
+    <ApolloProvider client={client}>
+      <Router history={hashHistory}>
+        <Route path="/" component={App}>
+          <Route path="login" component={LoginForm} />
+          <Route path="signup" component={SignupForm} />
+        </Route>
+      </Router>
+    </ApolloProvider>
+  );
+};
+
+ReactDOM.render(<Root />, document.querySelector('#root'));
+
+```
+
