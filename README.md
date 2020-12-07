@@ -1,837 +1,171 @@
 # GraphQL-React
 
-## Moving Client Side
+## Handling Errors Gracefully
 
-### Client Side Setup
+### Race Conditions - A Big Gotcha
 
-* We made some great progress on the server side of our application as we now have the ability to sign up a user logged them out and sign them back in. And also the ability to determine whether or not a user is currently authenticated
+* Both are log in form and or sign up form are in a really good spot.n both forms users can enter some details click the button and then are back in server then considers the user to be authenticated.
 
-* we can now start thinking about the client side of our application the client side of our application is going to be a re-act application that is backed by re-act router for handling navigation to some of the different pages.
+* So our application isn't a pretty good spot right now and it's time for us to move onto the home stretch which is going to be it to create a dashboard component which should only be visible to users if they are authenticated.
 
-* In header we will show signup and signIn button after user authenticated we will only show signout button.
+* And so that last part is really key.We want to make sure that if a user tries to visit the dashboard component when they have not signed in ahead of time we should redirect them back to the log in form.
 
-* I think we can probably go ahead and get started inside of our application on the client side by wiring up some of the Apollo boilerplate we'll open up our client directory and then find the index file.
+* So really we just want her application to behave like a normal web app if you're not signed in. You can't access the internals of the web application.
 
-* So this is where we're going to do a lot of the initial setup of our application 
+* After mutation and query we need to redirect to dashboard,
 
-```js
-import React from 'react';
-import ReactDOM from 'react-dom';
-import ApolloClient, { createNetworkInterface } from 'apollo-client';
-import { ApolloProvider } from 'react-apollo';
+* OK so let's look at the diagram really quick.So this is going to call our Auth flow. In a perfect world this is what we would really like to have happen. (Refer full7)
 
-const client = new ApolloClient({
-  dataIdFromObject: o => o.id /*Its purpose is to identify every record that comes back from the server */
+* So the thought process here is that we will run our loggin mutation that would reach out to our backend server.It would log the user and the users cookie would be set.
 
-  /* So rather than refetching our data for every single query that is issued Apollo will have the ability to identify the information that its already been pulled down from the server and store it inside of some local cache.*/
+* Then after the mutation successfully runs we add it in that refetch queries statement.
 
-});
+* So here's re-fetch queries right here where we re-fetch the current user so we re-fetch the current user and that establishes our current authentication state as far as our front end is concerned.
 
-const Root = () => {
-  return (
-    <div>
-    Auth Starter
-    </div>
-  );
-};
+* Then we are thining okay after refetch done then we could redirect to dashboard component. And then finally the dashboard would ensure that the user is authenticated Once the user comes to it.
 
-ReactDOM.render(<Root />, document.querySelector('#root'));
-```
+* The thought process there is that a user might come to the dashboard either through the log in form or by attempting to navigate directly to the dashboard.
 
-* Now one thing I do want to point out is that the only type that were turning from our back and right now is the user type and we currently have not yet defined the ID on that type just yet we have not yet defined the ID field.
+* And if the user navigates directly into the dashboard we would want to make sure that the user is authenticated before they get there. so dashboard is in charge of ensuring that the user is authenticated.
 
-```js
-const graphQL = require('graphql');
-const {
-  GraphQLObjectType,
-  GraphQLString,
-  GraphQLID
-} = graphQL;
+* So at the end of the day if the user was authenticated when they arrived on the dashboard great. They can stay there. However if the dashboard determines that the user is not authenticated look at it we're going to take them back out to the log in and they have to make sure they log in ahead of time.
 
-const UserType = new GraphQLObjectType({
-  name: 'UserType',
-  fields: {
-    id: { type: GraphQLID },
-    email: { type: GraphQLString }
-  }
-});
+* And so this is not exactly how authentication is going to come together inside of our application. So this is a little bit of a awkward spot in the world of Apollo. So we're going to you know work through this thing and figure out what the challenges are.
 
-module.exports = UserType;
+* But the good news is that even though there are a couple of challenges it's going to allow us to really figure out a lot more about how Apollo internally works.And we're also going to learn a little bit more about re-act along the way as well 
 
-``` 
-* So remember that data ID from object. The assumption here is that every single record that comes back from our back end will have an id property defined on it. So that's why we just added that ID field to the user type.
+* So let's look at what the offload is in reality.(Refer full8) So this is how the authentication would flow if we wired up the flow as we just were looking at in the last diagram (Refer full7) this is what would really happen.
 
-* We need to make sure that whenever we ask for user from the back end we have to specify that we want the ID field as well. And that's just what allows the Apollo client to uniquely identify every record that we fetch
+* So after the mutation runs we had been saying that we would chain on a dot then statement to the promise that has returned from this.props.mutate
 
-* So remember the Apollo client is just the piece of technology that interacts with our back end. It has no idea how to work with the re-act library. It's up to the Apollo provider to provide that glue layer the tween the Apollo client which fetches all the data and our re-act application which displays all the data.
+* and the assumption there was that that promise would be only resolved after the current user was refetched.And unfortunately that's not quite the case!!!!
 
-* Rather than just showing div we will wrap apollo provicer add in the Apollo provider we'll pass it to the client that we just created 
+* So here's what really happens after the loggin nutation runs. Any dot then statement that is chained onto that promise is immediately executed And simultaneously we refetched the current user Query.
 
-```js
-import React from 'react';
-import ReactDOM from 'react-dom';
-import ApolloClient, { createNetworkInterface } from 'apollo-client';
-import { ApolloProvider } from 'react-apollo';
+* So in other words the big catch here the big hang up is that the dashboard redirect promise does not quite work in the way that you would expect.
 
-const client = new ApolloClient({
-  dataIdFromObject: o => o.id
-});
+* Personally the way that I would really want mutate to work great here I would want the promise that is returned to only resolve after all after both the mutation and these queries that are associated on refetch queries right here have been resolved.
 
-const Root = () => {
-  return (
-    <ApolloProvider client={client}>  
-        <div>
-            Auth Starter
-        </div>
-    </ApolloProvider>
-  );
-};
+* But again that is not how the thing actually works.
 
-ReactDOM.render(<Root />, document.querySelector('#root'));
-```
-* I think we could probably give us a test out inside of our browser and just make sure that we still see the text Auth. starter on the screen.
+* So after the mutation runs if we change on a and then the user would instantly be redirected over to the dashboard and we would also start the request to fetch our current user. Now let's talk about exactly why that's a bad thing.
 
-### Root Routes with React Router   
+* Redirecting our user over to the dashboard is a near instantaneous operation.We're talking about micro-seconds milliseconds or micro-seconds a very fast transition speed.
 
-* We've now got some of our boilerplate together for starting up our Appollo client which means we can start moving over to the re-act router side of our application.
+* However prefetching the current user that is a forced network request we are always going to reach out from our re-act application to our back end server and try to figure out whether or not the user is currently authenticated.
 
-* One thing I want to add into our discussion about all the different components we'll have is that just to make re-act router work nicely we will have a top level app component which will be responsible for always showing the header on the screen
+* This process over here this is something that can take anywhere from I don't know five milliseconds to five seconds. It can be wildly variable and speed.And so what we're really dealing with right now is an order of operations here or a race condition.
 
-* All the re-act router configuration that we're going to have will be around deciding what to show on the body of the app component.
+* So because we are redirecting the user to the dashboard at the same instant that we are attempting to re-offense the current user or the redirect is always going to kick in first. So we are instantly going to go over to the dashboard.
 
-* Everything besides the header that we're going to be swapping out with different routes.So going from the landing form to the sign up form etc.
+* But as far as our application is concerned we don't know if the user is currently logged in and we don't really have any super reasonable way of delaying the dashboard to decide to redirect the user until the refetch query is complete. We don't really have the ability to do that.
 
-* we'll start off first by importing the re-act router library and a couple of different properties from it.So at the top we'll grab our router object the hash history object route and index routes and all this is coming from re-act router.
+* So if we coded up this application according to this flow right here we would always get the same exact result which would be logged user logs and successfully we redirect the user over to the dashboard.The dashboard says hey you're not logged in get out here. It takes us back to the log in form and then milliseconds later the current user gets refreshed refreshed and that updates our application. And at that point time we're kind of left holding the bag sitting there like well we're looking at the logging. But I'm logged in what what went wrong here.And so that's what a big issue with the auth flow in reality is inside of our application.
 
-```js
-import React from 'react';
-import ReactDOM from 'react-dom';
-import ApolloClient from 'apollo-client';
-import { ApolloProvider } from 'react-apollo';
-import { Router, hashHistory, Route, IndexRoute } from 'react-router';
+* It all revolves around the fact that we don't have a super good way to figure out exactly when the whole mutation and refetch of the current user query is all complete.
 
-import App from './components/app';
+* Again this is in my opinion a little bit of a rough edge around the Apollo in all of the research I've done. I really found that it really appears the Apollo team is not quite happy with the refashioning mechanics right now.
 
+* And so I I kind of would expect to see this behavior maybe change at some point in the future. I don't know when that might be. And I really don't know if it would happen.
 
-const client = new ApolloClient({
-  dataIdFromObject: o => o.id
-});
+* And so the best workaround for this is to just understand how the mutation works how the research works and to write up some code that's going to work around it reliably 100 percent of the time.
 
-const Root = () => {
-  return (
-    <ApolloProvider client={client}>
-      <Router history={hashHistory}>
-        <Route path="/" component={App}>
+* we're going to take we're going to figure out some work around here to successfully deal with the fact that while we're looking at this form we can't really hand or we can't really rely upon this request right here to change our authentication state.
 
-        </Route>
-      </Router>
-    </ApolloProvider>
-  );
-};
+### Finalized Auth Flow
 
-ReactDOM.render(<Root />, document.querySelector('#root'));
+* And I'm going to show you my suggestion of how we're going to deal with this case. The first thing I want to do is remind you or at least make something very crystal clear about how our components in our queries interact with each other 
 
-```
-* we'll first create our router and we'll tell it that we want to use hashHistory. Again we've had a little bit of a discussion about the use of hashHistory here as opposed to browser history.
+* whenever we rerun a query. All of the components that are associated with that query inside of our application are automatically going to update with the results from the query.
 
-* We're using hash history as opposed to browser history just because it's a lot more flexible when you want to move the hosting environment here
+* So if we consider the one query that we have right now the current user query we can associate this with 100 different components inside of our application. And if any one of those components decides to rerun this query right here all 100 components will Re-Read or with the updated data.
 
-* when we making use of hash history We don't really have to worry quite so much about the proper or correct set up inside of the Express side of our application 
+* And so that's something that's very important to keep in mind when we're thinking about rerunning queries inside of our application. the instant we fetch it boom and type re-act application or at least whichever components make use of the query is going to re render.
 
-* It's now inside of here.I want my root component which is what's always going to be displayed on the screen at all times to be something that we're going to call the app component.
+* So with that in mind we can probably figure out a way to trick our log in form and sign up form into being a little bit more aware of the user's authentication state.
 
-* So again the app component is always going to show the header and then it will show any nested component inside of it as well.right now let's define this app component and make sure that it always shows a header component which we also need to define.
+* So this is why I refer to as the finalized authflow this is what we're going to do in practice to make our project actually work.
+
+* The first thing we're going to do is associate our form with the current user Query and I say form I'm talking about the login form and the Sign-Up forms.
+
+* So the idea here is that after we associate the form with the current user query we will allow the user to enter in some sign of information. So they're going to enter in their e-mail and password that's going to run the mutation and then refetch the current user.
+
+* as we just discussed whenever we rerun the query after the query resolves it will force every component that uses that query to automatically re render. And so if we associate this current user query with the logon form.
+Then after we refreshed this query the log in form will automatically render as well.
+
+* So the login form will render with the knowledge that there is now a current user.
+
+* So we can exploit that fact right there to get a little bit of a hook of at least some understanding of hey my company is about to update. There was not a current user before but it appears that there now is and we'll take that little change in the state of that current user Querrey we'll take the fact that there was not a current user but that now is as a sign that the user must have just successfully logged in.
+
+* And so the instant the log in form he renders and we detect that there was no current user. But now there is we will take that as the sign that we need to redirect the user over to the dashboard than the dashboard can look at the current user property the current user has already been fetched.
+
+* We let the thing finish and we let it finish all the way to the point of allowing it to rerun the log in form.
+
+* So of course from the dashboard it actually looks at the user's authentication state. It's going to say oh yeah looks like they're authenticated. They can continue looking at the dashboard.
+
+* The entire process right here is our ability to watch the components update process and watch the piece of user or current user state that has returned from the query
+
+* and instantly we see that little piece of data change from not authenticated to authenticated we're going to take that as a sign that we need to take the user over to our dashboard component.
+
+* The downside to this approach is solely the fact the fact that it's not super clear what's going on with this thing. It's just not it just feels kind of nasty where it really feels like there should be a better way to do it 
+
+### Fixing the Login Process
+
+* At the end of the day we had said that we would associate the form with our current user query. And then as soon as that query gets updated by our refetching of the query we would figure out some way to detect the fact that the component now has the access to a current user or that the user is now authenticated and we would make use of that to somehow kick the user over to our dashboard.
+
+* Some practice a little bit more strict for than you might think. So here's how it's going to work.(Refer full10)
+
+* When our query reruns and we get a response back from the server. The query will be updated. That's going to cause our login form component to be re rendered.(Refer full10)
+
+* And at that point in time life cycle methods all the way. So component will update which is one of our lifecycle methods for re-act component will be automatically called with our new and old props.(Refer full10)
+
+* okay if the user was not authenticated. But now they are then they must have just successfully logged in. They probably shouldn't be looking at the log in form anymore. Let's forcibly push them over to the dashboard.
+
+* So that's got to be our plan. Again in practice ends up being very little code but understanding why we are doing it is kind of a big leap of faith there.
+
+* In login component Remember we had imported the query to wired up to the refits query statement in the first place.
+
+* So we need to first associate the query with the component itself through the use of the graphQL helper. after we do that. We can then add on that component will update lifecycle method.
+
+* So let's first associate the query with the component with the graphic helper at the bottom of the file.
 
 ```js
-import React from 'react';
-import Header from './Header';
-
-const App = (props) => {
-  return (
-    <div className="container">
-      <Header />
-      {props.children}
-    </div>
-  );
-};
-
-export default App;
-```
-* we have to define Header component also
-
-```js
-// Header.js
-import React, { Component } from 'react';
-
-class Header extends Component {
-  render() {
-    return (
-        <div>
-            Header
-        </div>
-    );
-  }
-}
-
-export default Header
-```
-### Figuring Out the Current User
-
-* Now that we've got the header on the screen we need to start thinking about what content it needs to show.
-
-* we want to make sure that it shows the correct buttons inside the head or depending on whether or not the user is currently authenticated with our application.
-
-* So when our Header first loads up I'm going to suggest that maybe we make a query to get our current authentication state. if the user is currently signed in we'll show a set of buttons that allow the user to log out.
-
-* Now if the user is not currently authenticated so if they are not yet signed into our application we can show a set of login buttons 
-
-```js
-//graphical query
-{
-    user{
-        id
-        email
-    }
-}
-```
-
-* Now one of the last queries that we wrote was actually to test the current user query on the root the root query type.
-
-* we get back the ID and the e-mail of that user just as we would expect.
-
-* Lets place this query in seperate query and we can import wherever we need.
-
-```js
-// gueries/CurrentUser.js
-import gql from 'graphql-tag';
-
-export default gql`
-  {
-    user {
-  		id
-      email
-    }
-  }
-`;
-```
-* Now we can use this in our header component
-```js
-// Header.js
-import React, { Component } from 'react';
-import { graphql } from 'react-apollo';
-import query from '../queries/CurrentUser';
-
-class Header extends Component {
-  render() {
-      console(this.props.data);
-    return (
-        <div>
-            Header
-        </div>
-    );
-  }
-}
-
-export default graphql(query)(Header);
-```
-* I'm going to flip on over to my application I can refresh the page and I get my two queries console log as expected.
-
-* Remember that the first result right here is from when before the query is actually completed.and then the component renders another time. Once the component or some new ones the query has been completed.
-
-* So let's look at the data on these things and see what we have available.So it looks like in the case that the user or the query has not been completed loading is true and we've seen this property several times before.
-
-* Chances are that when loading is true we have not yet fetched any details about the user whatsoever.
-
-* In our graphical we got user information but this query after completed sends user as null value, 
-
-* So it looks like between graphical and our application there is a little bit of a disagreement on whether or not we're currently authenticated.
-
-* So let's take a pause from our head or in the next section and let's figure out what's going on here and let's figure out why our current user is not correctly being fetched inside of our application.
-
-### Including Cookies with GraphQL Requests
-
-* In the last section we added in a little query to figure out whether or not the user is currently authenticated. Now to be 100 percent clear I am currently authenticated with the back end server.So when I'm sitting in graphical and I run the query to fetch the current user I get a response back. So I'm definitely authenticated according to graphical but inside of my application when I run the same query to fetch the current user I get a response of null.
-
-* So clearly something either in graphical or inside of my application is not functioning the way I expect because there is a big difference in the response that I get from each query (graphical and application). Even though the query is identical.
-
-* So this is one of the biggest gotchas in the world around Appollo. One of the biggest gotchas.
-
-* Let's take a look at a diagram that's going to help us understand exactly what's happening and what's going wrong with our application. (Refer : full6)
-
-* remember that with this coupled approach we allow mutation to handle all of the different authentication operations that we have.
-
-* So we rely on a mutation to figure out or to signin to log out all that kind of good stuff.
-
-* Whenever we make requests to our back end using graphQL so whenever we execute a query whenever we execute a mutation by default graphQL does not attempt to attach any of our cookies to the request. 
-
-* What that means is when a request goes from our browser to our back end graphQL it does not attach any of the information that identifies us to our backend server.
-
-* So inside of graphical when we execute this query graphical by default does attach queries to the request.
-
-* So I run this through this query right here. My query is issued to the backend server and my cookie is sent along as well. That identifies me to the back end server 
-
-* That identifies me to the back end server the back end server looks at the cookie. It identifies me as user test@test.com It sends the response back that contains the current user
-
-* inside of my application.However when my request is made to identify the current user by default my cookies are not included with that request.
-
-* And so when the server looks at the request to figure out hey what am I trying to do here. Passport is not able to identify the current user. And so when we attempt to return the current user the server says well they didn't pass along any cookies. I guess it's just some anonymous person. I'm not going to make any assumptions about who they are.
-
-* So in short by default graphQL does not send along cookies which tends to break authentication just right out of the box. If you're depending upon cookies for handling authentication.
-
-* So what we really have to do here is do a little bit of configuration for graphQL to instructed that it needs to send along our cookies with every single request.
-
-* And then we should be able to run the same query and get back to the current user from our backend as we would expect.
-
-* So again it's really just going to be a tiny bit of configuration with our GraphQL client
-
-* Remember is the Apollo client that is making actual requests to the back end server.
-
-* We can customize the way in which these requests are being made by specifying another option inside of this options object called the network interface
-
-* the network interface is a little piece of code inside of the Apollo client that is in charge of making actual net network requests to our back and server.
-
-```js
-import React from 'react';
-import ReactDOM from 'react-dom';
-//createNetworkInterface helper function
-import ApolloClient, { createNetworkInterface } from 'apollo-client'; 
-import { ApolloProvider } from 'react-apollo';
-import { Router, hashHistory, Route, IndexRoute } from 'react-router';
-
-import App from './components/app';
-
-const networkInterface = createNetworkInterface({
-  uri: '/graphql', /*  I've said several times that the Apollo client assumes that your graphical client on the Express side is listening on the endpoint /graphql.*/
-
-  /* Well remember we set that up as said of some of the configuration inside of our server.js file.*/
-
-  opts: {
-      // short for options property.
-    credentials: 'same-origin'
-    /* This is the magic line right here.The credentials are key of same origin means hey you're making requests to the same origin that the browser is currently on the long of the short of it is that this says it's safe to attempt to send along cookies with the outgoing request.*/
-  }
-});
-
-const client = new ApolloClient({
-  networkInterface, /* So now we're going to take this network interface and pass it along to the Apollo client. */
-  dataIdFromObject: o => o.id
-});
-
-const Root = () => {
-  return (
-    <ApolloProvider client={client}>
-      <Router history={hashHistory}>
-        <Route path="/" component={App}>
-
-        </Route>
-      </Router>
-    </ApolloProvider>
-  );
-};
-
-ReactDOM.render(<Root />, document.querySelector('#root'));
-
-```
-
-* whenever you make a request to the back end. Just make sure you send along some cookies along with the request. Then we'll take that network interface and pass it along to this Appollo client.
-
-* you might be thinking if Apollo client assumes that the server is listening on the route graphQL why are we redefining that right here.
-
-* And the aswer is whenever you create your own network interface it no longer makes the assumption that your End Point is hosted at /graphQL.
-
-* Well so we're just very directly saying yeah it's still the same end point. Don't worry you're still going to use the same end point as before.
-
-* credentials: 'same-origin' - This is the magic line right here.The credentials are key of same origin means hey you're making requests to the same origin that the browser is currently on the long of the short of it is that this says it's safe to attempt to send along cookies with the outgoing request
-
-* It should send along cookies whenever it makes a query to the backend server.
-
-* When Apollo tends to make a request to our graphQL server it's going to include cookies with the request when the request hits our express Server Express will automatically populate the request.user field.And so our graphQL server will understand who the current user of our application is.
-
-* If you refresh the application, we will get the console data as we expected
-
-### Authentication State
-
-```js
-// Header.js
-import React, { Component } from 'react';
-import { graphql } from 'react-apollo';
-import query from '../queries/CurrentUser';
-import { Link } from 'react-router';
-
-class Header extends Component {
-
-  renderButtons() {
-    const { loading, user } = this.props.data;
-
-    if (loading) { return <div />; }
-
-    if (user) {
-      return (
-        <li>Logout</li>
-      );
-    } else {
-      return (
-        <div>
-          <li>
-            <Link to="/signup">Signup</Link>
-          </li>
-          <li>
-            <Link to="/login">Login</Link>
-          </li>
-        </div>
-      );
-    }
-  }
-
-  render() {
-    return (
-      <nav>
-        <div className="nav-wrapper">
-          <Link to="/" className="brand-logo left">
-            Home
-          </Link>
-          <ul className="right">
-            {this.renderButtons()}
-          </ul>
-        </div>
-      </nav>
-    );
-  }
-}
-
-export default graphql(query)(Header);
-```
-
-* Lets add logout as link 
-
-```js
-import React, { Component } from 'react';
-import { graphql } from 'react-apollo';
-import { Link } from 'react-router';
-import query from '../queries/CurrentUser';
-import mutation from '../mutations/Logout';
-
-class Header extends Component {
-  onLogoutClick() {
-    this.props.mutate({
-    // refetchQueries: [{ query : query}] 
-      refetchQueries: [{ query }] // refetch after logout to update query
-    });
-  }
-
-  renderButtons() {
-    const { loading, user } = this.props.data;
-
-    if (loading) { return <div />; }
-
-    if (user) {
-      return (
-        <li><a onClick={this.onLogoutClick.bind(this)}>Logout</a></li>
-      );
-    } else {
-      return (
-        <div>
-          <li>
-            <Link to="/signup">Signup</Link>
-          </li>
-          <li>
-            <Link to="/login">Login</Link>
-          </li>
-        </div>
-      );
-    }
-  }
-
-  render() {
-    return (
-      <nav>
-        <div className="nav-wrapper">
-          <Link to="/" className="brand-logo left">
-            Home
-          </Link>
-          <ul className="right">
-            {this.renderButtons()}
-          </ul>
-        </div>
-      </nav>
-    );
-  }
-}
-
-export default graphql(mutation)(
-  graphql(query)(Header)
-);
-```
-
-* Make sure we added logout mutation logic 
-
-```js
-import gql from 'graphql-tag';
-
-export default gql`
-  mutation {
-    logout {
-      id
-      email
-    }
-  }
-`;
-
-```
-
-* OK so it's looking pretty good after mutation runs rerun this queery render any component that is associated with that query. And I will expect to see the header automatically update on the screen.
-
-* Lets login with graphical login and then check application it should show logout button
-
-```
-mutation { 
-    login(email : "test@test.com", password :"password") {
-        id
-    }
-}
-```
-
-* So I should now have a running session with the server which means I should be able to flip back over to my application refresh the page I see log out appear on the screen
-
-* of course we're running this application locally but we want to remind you that our MongoDB database is hosted remotely. So even though our application itself is hosted locally the data that we're fetching is from some remote server. So the speed with which this button up on the top right hand side renders is pretty darn representative of how I would expect this to render inside of a production environment.
-
-###  Login Form Design
-
-* I'm thinking that we'll make a log in form component and a sign up form component but they will both make use of a common component called the auth form 
-
-* the auth form right here. Will it contain the actual form element with the labels the inputs and the buttons that we want to show on the form itself.
-
-* But as soon as the user clicks submit to submit the form will pass us and we will call a callback that is passed from the parent down into the auth form.
-
-* By doing that we can have all the common logic around rendering the form itself inside of the auth form but for handling the very customized logic around which mutation we call to actually log in or sign up the user we can to find that mutation inside of the parent component.
-
-* Inside of my components directory I'm going to make a new file called loggin form.
-
-```js
-import React, { Component } from 'react';
-
-class LoginForm extends Component {
-
-  render() {
-    return (
-      <div>
-        <h3>Login</h3>
-      </div>
-    );
-  }
-}
-
-export default LoginForm;
-```
-* Now we can import and use this in our app component
-
-```js
-<ApolloProvider client={client}>
-      <Router history={hashHistory}>
-        <Route path="/" component={App}>
-          <Route path="login" component={LoginForm} />
-          
-        </Route>
-      </Router>
-    </ApolloProvider>
-```
-### The Auth Form
-
-* We've got our log in form on the screen right now. I want to make sure that we have a separate component called auth form that is going to render the actual form that the user is going to type their input into.
-
-* this would be a pretty straightforward component. It's going to house a simple form that's going to show some details or associated inputs to the user.
-
-```js
-import React, { Component } from 'react';
-
-class AuthForm extends Component {
-
-/* So let's for first define our component level state and then we'll put together the actual form. So in the constructor we will receive our prop's object and we'll initialize our state first by pulling super with props.*/
-
-  constructor(props) {
-    super(props);
-
-    this.state = { email: '', password: '' };
-  }
-
-  render() {
-    return (
-      <div className="row">
-        <form className="col s6">
-          <div className="input-field">
-            <input
-              placeholder="Email"
-              value={this.state.email}
-              onChange={e => this.setState({ email: e.target.value })}
-            />
-          </div>
-          <div className="input-field">
-            <input
-              placeholder="Password"
-              type="password"
-              value={this.state.password}
-              onChange={e => this.setState({ password: e.target.value})}
-            />
-          </div>
-          <button className="btn">Submit</button>
-        </form>
-      </div>
-    );
-  }
-}
-
-export default AuthForm;
-```
-
-* The last thing you have to do is think about how we're going to intercept the form being submitted. Let's first place this on the form inside of the log and form and then we can think about adding in a callback handler for the actual submit event.
-
-* So I'm going to flip on over to the login form I want to import the form that we just created and show it inside of the log in form and then we'll pass a couple of props down into it to customize what auth form does whenever it is submitted.
-
-```js
-import React, { Component } from 'react';
-import AuthForm from './AuthForm';
-
-class LoginForm extends Component {
-
-  render() {
-    return (
-      <div>
-        <h3>Login</h3>
-         <AuthForm />
-      </div>
-    );
-  }
-}
-
-export default LoginForm;
-```
-* Now auth form visible inside of login form
-
-### Importing the Login Mutation
-
-* In the last section and we put together our art form in its entirety we now need to make sure that whenever the user submits this form right here we call mutation to log the user in.
-
-* So as a reminder this is logging the user and we're not attempting to sign up the user just yet.
-
-* First off we need to be aware that whenever we submit our mutation there might be some errors that get returned to us.
-
-* So maybe user enters in the incorrect password maybe they enter in an email that doesn't exist.We have to figure out some way to communicate those errors back down into the form to get them to show up on the screen so that the user knows that they need to make a little change to their log in information.
-
-* But first let's worry about just putting the mutation together and then we'll come back wired up to the component itself and then worry about dealing with the error handling.
-
-```js
-//mutation/Login.js
-import gql from 'graphql-tag';
-
-export default gql`
-  mutation Login($email: String, $password: String) {
-    login(email: $email, password: $password) {
-      id
-      email
-    }
-  }
-`;
-```
-* So the last thing we have to do is wired up to our log in form and then we can worry about passing it down as some type of callback or something like that to the actual Auth form.
-
-* Ok so now our last step is going to be to take the graph view all helper take the mutation and push it up together with the log in form.
-
-```js
-import React, { Component } from 'react';
-import AuthForm from './AuthForm';
-import mutation from '../mutations/Login';
-
-class LoginForm extends Component {
-
-  render() {
-    return (
-      <div>
-        <h3>Login</h3>
-         <AuthForm />
-      </div>
-    );
-  }
-}
-
-export default graphql(mutation)(LoginForm);
-```
-### Submitting the Auth Form
-
-* Login form now has access to the log in mutation, emember that whenever we call the log and mutation from within the component we call it this.props.mutate this mutation in particular expects both an email and a password as query variables to be provided.
-
-* So we have to somehow get our component level state from the Auth form and move it on up into the login form.In practice this is going to end up as being a simple callback.
-
-* So I'm going to define a callback inside of the log in form and then I'll pass that down to the auth form and it should be called whenever the form inside out then gets submitted.
-
-```js
-import React, { Component } from 'react';
-import AuthForm from './AuthForm';
-import mutation from '../mutations/Login';
-import { graphql } from 'react-apollo';
-import query from '../queries/CurrentUser';
-
-class LoginForm extends Component {
-
-  onLoginFormSubmit({ email, password }) {
-    this.props.mutate({
-      variables: { email, password }
-    });
-  }
-
-  render() {
-    return (
-      <div>
-        <h3>Login</h3>
-        <AuthForm
-          onLoginSubmit={this.onLoginFormSubmit.bind(this)}
-        />
-      </div>
-    );
-  }
-}
-
 export default graphql(query)(
   graphql(mutation)(LoginForm)
 );
-
 ```
-* So now inside auth form whenever the forms get submitted. Make sure that we call on submit and pass in both the email and password that the user is trying to authenticate with.
+* OK so the query is now associated with the component.
 
-```js
-import React, { Component } from 'react';
+* As soon as the query gets updated in any way shape or form that component will be updated it will be rendered with a set of props on this.props.data
 
-class AuthForm extends Component {
-  constructor(props) {
-    super(props);
+* I'm going to define our lifecycle method componentWillUpdate
 
-    this.state = { email: '', password: '' };
-  }
+* whenever a component is about to be pre-rendered due to any reason whatsoever. This function right here will be automatically called.
 
-  onAuthSubmit(event) {
-      //here
-    event.preventDefault();
-
-    this.props.onLoginSubmit(this.state); // here we sent state with email and password
-    //this.props.onLoginSubmit -> from login auth component props 
-  }
-
-  render() {
-      // form onSubmit bind with onSubmit function
-    return (
-      <div className="row">
-        <form onSubmit={this.onAuthSubmit.bind(this)} className="col s6">
-          <div className="input-field">
-            <input
-              placeholder="Email"
-              value={this.state.email}
-              onChange={e => this.setState({ email: e.target.value })}
-            />
-          </div>
-          <div className="input-field">
-            <input
-              placeholder="Password"
-              type="password"
-              value={this.state.password}
-              onChange={e => this.setState({ password: e.target.value})}
-            />
-          </div>
-          <button className="btn">Submit</button>
-        </form>
-      </div>
-    );
-  }
-}
-
-export default AuthForm;
-```
-
-* With this change we successfully logged in 
-
-* So that's a little bit more the way I expect so I am successfully signing in here. But again you'll notice I am not successfully updating the header in this case so my application state is not quite reflecting the fact that my user is now signed into the application.
-
-###  Refreshing the Current User and Error Handling with GraphQL
-
-* In the last section we finished up our log in form and we were able to see the mutation successfully the issued to our back end.
-
-* after mutation we didn't see the header update and we didn't get automatically navigated anywhere.
-
-* We need to update header and also we need to handle error. The first thing I'd like to take care of is make sure that we're maintaining the header in the correct fashion.
-
-* In login form
-
-```js
-onSubmit({ email, password }) {
-    this.props.mutate({
-      variables: { email, password },
-      refetchQueries: [{ query }]
-    }).catch(res => {
-        // collect all the errors and put this into a single array
-      const errors = res.graphQLErrors.map(error => error.message);
-      this.setState({ errors });
-    });
-  }
-```
-* Now we need to pass this error to the auth component and show there 
-
-```js
-// Login form
-render() {
-    return (
-      <div>
-        <h3>Login</h3>
-        <AuthForm
-          errors={this.state.errors}
-          onSubmit={this.onSubmit.bind(this)}
-        />
-      </div>
-    );
-  }
-```
-* Now we can populate this erroe in our Auth template as follows
-
-```js
-render() {
-    return (
-      <div className="row">
-        <form onSubmit={this.onSubmit.bind(this)} className="col s6">
-          <div className="input-field">
-            <input
-              placeholder="Email"
-              value={this.state.email}
-              onChange={e => this.setState({ email: e.target.value })}
-            />
-          </div>
-          <div className="input-field">
-            <input
-              placeholder="Password"
-              type="password"
-              value={this.state.password}
-              onChange={e => this.setState({ password: e.target.value})}
-            />
-          </div>
-          <div className="errors">
-            {this.props.errors.map(error => <div key={error}>{error}</div>)}
-          </div>
-          <button className="btn">Submit</button>
-        </form>
-      </div>
-    );
-  }
-```
-### The Signup Mutation
 ```js
 import React, { Component } from 'react';
 import AuthForm from './AuthForm';
+import mutation from '../mutations/Login';
 import { graphql } from 'react-apollo';
-import mutation from '../mutations/Signup';
 import query from '../queries/CurrentUser';
 import { hashHistory } from 'react-router';
 
-class SignupForm extends Component {
+class LoginForm extends Component {
   constructor(props) {
     super(props);
 
     this.state = { errors: [] };
+  }
+
+  // here...
+  componentWillUpdate(nextProps) {
+    // this.props // the old, current set of props
+    // nextProps // the next set of props that will be in place
+    // when the component rerenders
+    if (!this.props.data.user && nextProps.data.user) {
+      // redirect to dashboard!!!!
+      hashHistory.push('/dashboard');
+    }
   }
 
   onSubmit({ email, password }) {
@@ -847,7 +181,7 @@ class SignupForm extends Component {
   render() {
     return (
       <div>
-        <h3>Sign Up</h3>
+        <h3>Login</h3>
         <AuthForm
           errors={this.state.errors}
           onSubmit={this.onSubmit.bind(this)}
@@ -858,11 +192,29 @@ class SignupForm extends Component {
 }
 
 export default graphql(query)(
-  graphql(mutation)(SignupForm)
+  graphql(mutation)(LoginForm)
 );
 
 ```
-* Let us use this router in our index.js
+
+* I do want to mention that we're going to repeat this exact same process over on the sign up form as well because I really do expect to have the same experience with both the sign up form and the log in form
+
+* After did the same in sign up form also make sure we gave dashboard details also.
+
+* So let's make a new dashboard component and then hook it up inside of our router 
+
+```js
+// Dashboard.js
+import React from 'react';
+
+export default () => {
+  return <div>You are logged in.</div>
+};
+
+```
+
+* Now we can import this and use inside our component(index.js)
+
 ```js
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -873,6 +225,7 @@ import { Router, hashHistory, Route, IndexRoute } from 'react-router';
 import App from './components/app';
 import LoginForm from './components/LoginForm';
 import SignupForm from './components/SignupForm';
+import Dashboard from './components/Dashboard';
 
 const networkInterface = createNetworkInterface({
   uri: '/graphql',
@@ -893,6 +246,7 @@ const Root = () => {
         <Route path="/" component={App}>
           <Route path="login" component={LoginForm} />
           <Route path="signup" component={SignupForm} />
+          <Route path="dashboard" component={Dashboard} />
         </Route>
       </Router>
     </ApolloProvider>
@@ -900,6 +254,124 @@ const Root = () => {
 };
 
 ReactDOM.render(<Root />, document.querySelector('#root'));
-
 ```
 
+* There is a issue here ie even after log out we are able to access dashboard..why ?? But clearly the header is reflecting.No that's not the case I'm not actually logged in at this point in time.
+
+* hey if the user is trying to get to the dashboard page let's make sure that they actually are logged in and then we also need to make sure that after the user signs out like when they click log out on the header. If they're currently on the dashboard route we need to make sure that we dump them back to the log in page
+
+### The Need for a HOC
+
+* In the last section we recognize that the dashboard component that we just created is not really properly tracking whether or not we are currently signed into the application.
+
+* So I want to have some reusable amount of code that determines what to do based on the user's authentication status 
+
+* to handle reusable code like this inside of re-act the classic go to solution is a higher order component
+
+* to handle authentication between different components inside of our application that all need to make sure that the user is authenticated before they can visit that particular component.
+
+* So we're going to create something called the requireAuth higher order component.(HOC)
+
+### Getting Started with RequireAuth
+
+* higher order component is how we get some amount of code reusability in the reactJS world.
+
+* We take a standard component like that type of component we've been creating all throughout this course. It can be a class based component or a functional one.
+
+* We take that component we compose it together with a higher order component and that adds some amount of functionality to our original component.We usually refer to these as enhanced or composed components 
+
+* Now you will notice I used a lower case are here(file name - requireAuth) traditionally with higher order components.We use a lower case character for the first letter inside the name. That is because a higher order component actually is a function and traditionally functions are not capitalized.
+
+* whenever that component has been rendered to the screen I want to check to see whether or not the user is currently signed in.
+
+* So how do we check to see whether or not the users currently signed in we've done this several times before inside of our application. We've made use of that current user query. We said run this query right here. If a user is returned then they must be signed in.
+
+* But if a user is not returned then they are not authenticated and we need to kick them out to somewhere else in our application.
+
+* We're going to turn our component into a function that takes a wrapped component
+
+* so we're then going to wrap the component we just created with the function that we just defined
+
+* So the dashboard is coming in as the wrapped component. We create our new required off components. It's going to do some fancy logic to figure out whether or not the user is currently authenticated. And then it will end up showing the dashboard so wrapped computing right here ends up being the dashboard. And again this comes down to a little bit around how higher order components work.
+
+
+```js
+import React, { Component } from 'react';
+import { graphql } from 'react-apollo';
+import currentUserQuery from '../queries/CurrentUser';
+import { hashHistory } from 'react-router';
+
+export default (WrappedComponent) => {
+  class RequireAuth extends Component {
+    componentWillUpdate(nextProps) {
+      if (!nextProps.data.loading && !nextProps.data.user) {
+        hashHistory.push('/login');
+      }
+    }
+
+    render() {
+      return <WrappedComponent {...this.props} />;
+    }
+  }
+  // at the bottom. We're going to return the graph qualified version of the required off component.
+  return graphql(currentUserQuery)(RequireAuth);
+};
+```
+
+* Now we have a HOC that will redirect to login if not authenticated
+
+* Now we can use this HOC in our router ti wrap dashboard component. And I'm going to apply the higher order component to the dashboard.
+
+```js
+import React from 'react';
+import ReactDOM from 'react-dom';
+import ApolloClient, { createNetworkInterface } from 'apollo-client';
+import { ApolloProvider } from 'react-apollo';
+import { Router, hashHistory, Route, IndexRoute } from 'react-router';
+
+import App from './components/app';
+import LoginForm from './components/LoginForm';
+import SignupForm from './components/SignupForm';
+import Dashboard from './components/Dashboard';
+import requireAuth from './components/requireAuth';
+
+const networkInterface = createNetworkInterface({
+  uri: '/graphql',
+  opts: {
+    credentials: 'same-origin'
+  }
+});
+
+const client = new ApolloClient({
+  networkInterface,
+  dataIdFromObject: o => o.id
+});
+
+const Root = () => {
+  return (
+    <ApolloProvider client={client}>
+      <Router history={hashHistory}>
+        <Route path="/" component={App}>
+          <Route path="login" component={LoginForm} />
+          <Route path="signup" component={SignupForm} />
+          <Route path="dashboard" component={requireAuth(Dashboard)} />
+        </Route>
+      </Router>
+    </ApolloProvider>
+  );
+};
+
+ReactDOM.render(<Root />, document.querySelector('#root'));
+```
+
+* Remember component did mount is only called when it component is first rendered to the screen.
+
+* When I clicked on the button to sign out up here it did not cause the dashboard component to be rendered in any way shape or form.
+
+* I shouldn't say that it did not cause the dashboard component to have the component did mount life cycle method calls again. Because the dashboard was not unmounted and remounted it was just updated.
+
+* So right now placing all this authentication logic inside of only component did mount is not a good location for handling the updates to my current state
+
+* to correctly handle that will instead use a different lifecycle method. componentWillUpdate
+
+* We're going to get this thing called every single time that the query updates and state in any fashion. So maybe the query goes from not loading to loading or loading to not loading or we now have a current user assigned or the current user doesn't exist anymore. Every single time that our query updates in any way shape or form the component will update will be called again 
